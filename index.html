@@ -1124,6 +1124,65 @@ function draw() {
         ctx.beginPath(); ctx.moveTo(px, py + 22); ctx.lineTo(px + 8, py + 28); ctx.stroke();
     }
 
+    // 장착한 무기를 졸라맨 손에 그립니다. 공격 중에는 무기가 함께 휘둘러집니다.
+    const weaponName = player.weapon && player.weapon.name ? player.weapon.name : '맨손';
+    if (!weaponName.includes('맨손')) {
+        const handX = px + 9 * dir;
+        const handY = py + (player.isAttacking ? 18 : 27);
+        ctx.save();
+        ctx.translate(handX, handY);
+        ctx.scale(dir, 1);
+        ctx.rotate(player.isAttacking ? -0.95 : (player.isSkill ? -0.45 : 0.25));
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        if (weaponName.includes('몽둥이')) {
+            // 나무 몽둥이: 두꺼운 나무 몸통과 손잡이
+            ctx.strokeStyle = '#4a2814'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(34, -31); ctx.stroke();
+            ctx.strokeStyle = '#b8793d'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.moveTo(2, 1); ctx.lineTo(32, -29); ctx.stroke();
+            ctx.strokeStyle = '#e3b06b'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(22, -20); ctx.lineTo(28, -25); ctx.stroke();
+        } else if (weaponName.includes('목검')) {
+            // 목검: 갈색 목재 칼날과 가드
+            ctx.strokeStyle = '#5a3218'; ctx.lineWidth = 7;
+            ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(38, -36); ctx.stroke();
+            ctx.strokeStyle = '#d5a15e'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(3, -1); ctx.lineTo(36, -34); ctx.stroke();
+            ctx.strokeStyle = '#3b2417'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(4, -5); ctx.lineTo(13, 4); ctx.stroke();
+            ctx.strokeStyle = '#e7c58a'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(-2, 4); ctx.lineTo(5, -3); ctx.stroke();
+        } else if (weaponName.includes('원소검')) {
+            // 전설의 원소검: 청록색 빛이 나는 마법검
+            ctx.shadowBlur = 18; ctx.shadowColor = '#00ffff';
+            ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(42, -42); ctx.stroke();
+            ctx.strokeStyle = '#f0ffff'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(3, -1); ctx.lineTo(40, -40); ctx.stroke();
+            ctx.strokeStyle = '#ffd54f'; ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.moveTo(4, -7); ctx.lineTo(14, 3); ctx.stroke();
+            ctx.fillStyle = '#fff59d'; ctx.beginPath(); ctx.arc(43, -43, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        } else {
+            // 쇠검 및 기타 검: 은색 칼날, 어두운 날 테두리, 가드와 손잡이
+            ctx.shadowBlur = 8; ctx.shadowColor = '#c9f3ff';
+            ctx.strokeStyle = '#263746'; ctx.lineWidth = 9;
+            ctx.beginPath(); ctx.moveTo(1, 1); ctx.lineTo(40, -39); ctx.stroke();
+            ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(39, -38); ctx.stroke();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(5, -3); ctx.lineTo(36, -34); ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#f6c453'; ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.moveTo(3, -7); ctx.lineTo(13, 3); ctx.stroke();
+            ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.moveTo(-3, 5); ctx.lineTo(5, -3); ctx.stroke();
+        }
+        ctx.restore();
+    }
+
     damageTexts.forEach(d => {
         ctx.shadowBlur = 6; ctx.shadowColor = d.color; ctx.fillStyle = d.color;
         ctx.font = 'bold 16px sans-serif'; ctx.globalAlpha = d.opacity;
