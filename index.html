@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>졸라맨 원소 RPG - 무기 파밍 & 대장간 강화</title>
+    <title>졸라맨 원소 RPG - 마을 & 무기 상점</title>
     <style>
         body { 
             margin: 0; padding: 0; 
@@ -62,7 +62,7 @@
         }
         .modal-btn:hover { background: #00ffcc; color: #000; }
 
-        /* 스킬 트리 미해금 노드 흑백/어둡게 처리 */
+        /* 스킬 트리 전용 스타일 */
         #skillModal { width: 580px; }
         .tree-container { display: flex; flex-direction: column; align-items: center; gap: 15px; margin: 15px 0; }
         .tree-row { display: flex; justify-content: center; gap: 15px; width: 100%; }
@@ -84,6 +84,12 @@
             display: flex; justify-content: space-between; align-items: center;
             background: #121a2e; padding: 8px 14px; border-radius: 8px; margin-bottom: 6px;
             border: 1px solid #233148;
+        }
+
+        .shop-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #121a2e; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px;
+            border: 1px solid #25334d;
         }
 
         #charSelectScreen {
@@ -151,6 +157,31 @@
         <button class="modal-btn" onclick="closeModals()" style="border-color:#ff0055; color:#ff0055;">닫기</button>
     </div>
 
+    <!-- 상점 모달 -->
+    <div id="shopModal" class="modal" style="width:460px;">
+        <h2>🛒 무기 상점</h2>
+        <p style="font-size:12px; color:#a0b2ce; margin-bottom:12px;">골드를 지급하고 무기를 즉시 구매하여 장착할 수 있습니다.</p>
+        <div style="text-align:left;">
+            <div class="shop-item">
+                <span>🪵 <strong>나무 몽둥이</strong> <small style="color:#ffeb3b;">(공격력 +5)</small></span>
+                <button class="modal-btn" onclick="buyWeapon('🪵 나무 몽둥이', 5, 200)">200 G 구매</button>
+            </div>
+            <div class="shop-item">
+                <span>🗡️ <strong>목검</strong> <small style="color:#ffeb3b;">(공격력 +15)</small></span>
+                <button class="modal-btn" onclick="buyWeapon('🗡️ 목검', 15, 500)">500 G 구매</button>
+            </div>
+            <div class="shop-item">
+                <span>⚔️ <strong>쇠검</strong> <small style="color:#ffeb3b;">(공격력 +30)</small></span>
+                <button class="modal-btn" onclick="buyWeapon('⚔️ 쇠검', 30, 1200)">1,200 G 구매</button>
+            </div>
+            <div class="shop-item">
+                <span>🔮 <strong>전설의 원소검</strong> <small style="color:#ffeb3b;">(공격력 +70)</small></span>
+                <button class="modal-btn" onclick="buyWeapon('🔮 전설의 원소검', 70, 3500)">3,500 G 구매</button>
+            </div>
+        </div>
+        <button class="modal-btn" onclick="closeModals()" style="border-color:#ff0055; color:#ff0055; margin-top:10px;">나가기</button>
+    </div>
+
     <!-- 스탯 모달 -->
     <div id="statModal" class="modal" style="width:440px;">
         <h2>📊 스탯 투자 (보유 SP: <span id="modalSp" style="color:#ffeb3b;">0</span>)</h2>
@@ -166,7 +197,7 @@
 
     <!-- 스킬 숙련도 모달 -->
     <div id="skillModal" class="modal">
-        <h2>📈 스킬 숙련도 트리 (대폭 상향된 기준!)</h2>
+        <h2>📈 스킬 숙련도 트리</h2>
         <p style="font-size:11px; color:#88a;">현재 총 숙련도: <strong id="masteryText" style="color:#00e5ff;">0 / 5,000 Exp</strong></p>
         
         <div class="tree-container">
@@ -226,7 +257,6 @@ const player = {
     
     stats: { speed: 1, power: 1, heal: 1, def: 1, hp: 1 },
 
-    // 무기 시스템 (파밍 및 대장간 강화)
     weapon: { name: "맨손", bonusAtk: 0, enhanceLv: 0 },
 
     masteryExp: 0,
@@ -247,8 +277,9 @@ let currentMap = 'town';
 let activeQuest = null;
 
 const townBuildings = [
-    { name: "🍺 주점", x: 140, width: 90, color: "#8b5a2b", type: 'tavern' },
-    { name: "🔨 대장간", x: 380, width: 90, color: "#4a5568", type: 'forge' },
+    { name: "🍺 주점", x: 120, width: 90, color: "#8b5a2b", type: 'tavern' },
+    { name: "🔨 대장간", x: 330, width: 90, color: "#4a5568", type: 'forge' },
+    { name: "🛒 상점", x: 540, width: 90, color: "#2b6cb0", type: 'shop' },
     { name: "🌀 던전 포탈", x: 800, width: 70, color: "#805ad5", type: 'portal' }
 ];
 
@@ -256,7 +287,7 @@ const platforms = [{ x: 0, y: 440, width: 960, height: 80 }];
 const spawnNest = { x: 750, y: 380, width: 120, height: 60 };
 
 let monsters = [];
-let treasureBoxes = []; // 드랍된 보물상자 객체 배열
+let treasureBoxes = [];
 let particles = [];
 let skillVisuals = []; 
 let damageTexts = [];
@@ -269,7 +300,6 @@ function triggerShake(duration, intensity) {
 function recalculateStats() {
     player.maxHp = 100 + (player.stats.hp - 1) * 25;
     player.maxShield = 50 + (player.stats.def - 1) * 20;
-    // 기본 힘 스탯 + 무기 보너스 공격력 + 무기 강화 레벨 공격력
     player.atk = 15 + (player.stats.power - 1) * 8 + player.weapon.bonusAtk + (player.weapon.enhanceLv * 10);
     player.speedVal = 5.0 + (player.stats.speed - 1) * 0.45;
     player.dodgeRate = Math.min(0.50, 0.05 + (player.stats.speed - 1) * 0.03);
@@ -281,8 +311,14 @@ function recalculateStats() {
 function selectElement(elemKey) {
     player.elementKey = elemKey;
     document.getElementById('charSelectScreen').style.display = 'none';
+    
+    // 캐릭터 초기 위치 설정 및 스탯 초기화
+    player.x = 120;
+    player.y = 350;
     recalculateStats();
-    player.hp = player.maxHp; player.shield = player.maxShield;
+    player.hp = player.maxHp; 
+    player.shield = player.maxShield;
+    
     showNotify(`🎉 ${ELEMENTS[elemKey].name} 속성을 선택했습니다! 주점으로 이동하세요.`);
 }
 
@@ -313,6 +349,22 @@ function upgradeWeapon() {
         showNotify(`🔨 무기 강화 성공! (+${player.weapon.enhanceLv} 달성 / ATK +10)`);
     } else {
         showNotify(`❌ 골드가 부족합니다! (${cost} Gold 필요)`);
+    }
+}
+
+function openShopModal() {
+    closeModals();
+    document.getElementById('shopModal').style.display = 'block';
+}
+
+function buyWeapon(name, bonusAtk, price) {
+    if (player.gold >= price) {
+        player.gold -= price;
+        player.weapon = { name: name, bonusAtk: bonusAtk, enhanceLv: 0 };
+        recalculateStats();
+        showNotify(`🛒 [${name}] 구매 완료! (ATK +${bonusAtk})`);
+    } else {
+        showNotify(`❌ 골드가 부족합니다! (${price} Gold 필요)`);
     }
 }
 
@@ -363,7 +415,6 @@ function updateSkillTreeUI() {
         }
     };
 
-    // 대폭 상향된 숙련도 기준 적용 (1,000 / 5,000)
     setNodeState('node-t1', true, player.equippedSkill === 't1');
     setNodeState('node-t2_1', exp >= 1000, false);
     setNodeState('node-t2_2', exp >= 1000, false);
@@ -477,15 +528,13 @@ window.addEventListener('keydown', e => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Space'].includes(e.key)) e.preventDefault();
     keys[e.key] = true;
 
-    if (e.key === 'q' || e.key === 'Q') { if (currentMap === 'town' && Math.abs(player.x - 170) < 60) openTavern(); }
-    if (e.key === 'e' || e.key === 'E') { if (currentMap === 'town' && Math.abs(player.x - 425) < 60) openForgeModal(); }
+    if (e.key === 'q' || e.key === 'Q') { if (currentMap === 'town' && Math.abs(player.x - 145) < 60) openTavern(); }
+    if (e.key === 'e' || e.key === 'E') { if (currentMap === 'town' && Math.abs(player.x - 375) < 60) openForgeModal(); }
+    if (e.key === 't' || e.key === 'T') { if (currentMap === 'town' && Math.abs(player.x - 585) < 60) openShopModal(); }
     if (e.key === 'u' || e.key === 'U') openStatModal();
     if (e.key === 'k' || e.key === 'K') openSkillModal();
     
-    // [F] 보물상자 열기
-    if (e.key === 'f' || e.key === 'F') {
-        openNearbyTreasureBox();
-    }
+    if (e.key === 'f' || e.key === 'F') { openNearbyTreasureBox(); }
 
     if ((e.key === 'c' || e.key === 'C') && currentMap === 'dungeon') {
         useUltimateSkill();
@@ -493,7 +542,6 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
 
-// 보물상자 개봉 (확률별 무기 드랍)
 function openNearbyTreasureBox() {
     treasureBoxes.forEach((box, i) => {
         if (Math.abs(player.x - box.x) < 40) {
@@ -599,7 +647,6 @@ function useUltimateSkill() {
         addMasteryExp(5);
 
         if (m.hp <= 0) {
-            // 몬스터 처치 시 40% 확률로 보물상자 드랍
             if (Math.random() < 0.40) {
                 treasureBoxes.push({ x: m.x, y: 410 });
             }
@@ -714,7 +761,6 @@ function update() {
     if (player.x < 0) player.x = 0;
     if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
 
-    // 슬라임 추적 및 보스 스킬 AI
     monsters.forEach(m => {
         if (m.frozen > 0) {
             m.frozen--;
@@ -798,10 +844,13 @@ function draw() {
             ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(b.name, b.x + 10, 265);
             
             if (b.type === 'tavern' && Math.abs(player.x - (b.x + 30)) < 50) {
-                ctx.fillStyle = '#ffeb3b'; ctx.fillText("[Q] 키를 눌러 주점 진입", b.x - 10, 240);
+                ctx.fillStyle = '#ffeb3b'; ctx.fillText("[Q] 주점 진입", b.x - 5, 240);
             }
-            if (b.type === 'forge' && Math.abs(player.x - (b.x + 45)) < 50) {
-                ctx.fillStyle = '#00ffcc'; ctx.fillText("[E] 키를 눌러 대장간 진입", b.x - 10, 240);
+            if (b.type === 'forge' && Math.abs(player.x - (b.x + 30)) < 50) {
+                ctx.fillStyle = '#00ffcc'; ctx.fillText("[E] 대장간 진입", b.x - 10, 240);
+            }
+            if (b.type === 'shop' && Math.abs(player.x - (b.x + 30)) < 50) {
+                ctx.fillStyle = '#ff0055'; ctx.fillText("[T] 무기 상점", b.x - 5, 240);
             }
         });
     } else {
@@ -826,7 +875,6 @@ function draw() {
         ctx.fillStyle = '#00e5ff'; ctx.fillRect(plat.x, plat.y, plat.width, 3);
     });
 
-    // 📦 드랍된 보물상자 렌더링 및 안내
     treasureBoxes.forEach(box => {
         ctx.fillStyle = '#ffb703';
         ctx.shadowBlur = 12; ctx.shadowColor = '#ffb703';
@@ -885,6 +933,7 @@ function draw() {
         ctx.shadowBlur = 0;
     });
 
+    // 졸라맨 캐릭터 렌더링
     if (player.elementKey) {
         const elem = ELEMENTS[player.elementKey];
         const px = player.x + player.width / 2;
