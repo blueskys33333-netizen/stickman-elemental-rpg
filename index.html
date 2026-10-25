@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>졸라맨 원소 RPG - 4대 원소 스킬 트리</title>
+    <style>
+        body { 
+            margin: 0; padding: 0; 
+            background-color: #06080d; 
+            color: #fff; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            min-height: 100vh; overflow: hidden; 
+        }
+        #gameContainer { 
+            position: relative; 
+            box-shadow: 0 0 45px rgba(0, 229, 255, 0.3); 
+            border-radius: 12px; overflow: hidden; 
+            border: 2px solid #1a233a; 
+        }
+        canvas { background: #000; display: block; }
+        #uiOverlay { 
+            position: absolute; top: 15px; left: 15px; 
+            pointer-events: none; 
+            background: rgba(8, 12, 20, 0.9); 
+            padding: 14px 20px; border-radius: 10px; 
+            border: 1px solid #00e5ff; font-size: 13px; line-height: 1.6; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8); 
+        }
+        #mapText { 
+            position: absolute; top: 15px; right: 15px; 
+            background: rgba(8, 12, 20, 0.9); 
+            padding: 8px 18px; border-radius: 8px; 
+            border: 1px solid #ff0055; font-weight: bold; color: #ffeb3b; font-size: 14px; 
+        }
+        .stat-val { color: #00ffcc; font-weight: bold; }
+        .controls { 
+            margin-top: 12px; color: #9aaec4; font-size: 13px; 
+            background: #101622; padding: 10px 24px; border-radius: 20px; 
+            border: 1px solid #233148; 
+        }
+        
+        /* 스킬 트리 패널 UI */
+        #skillPanel {
+            position: absolute; bottom: 15px; right: 15px;
+            background: rgba(10, 15, 26, 0.92);
+            border: 1px solid #00ffcc; border-radius: 10px;
+            padding: 10px 14px; font-size: 12px; display: flex; gap: 8px;
+        }
+        .elem-btn {
+            background: #182234; color: #fff; border: 1px solid #3d567a;
+            padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            transition: all 0.2s;
+        }
+        .elem-btn:hover { border-color: #00ffcc; color: #00ffcc; }
+        .elem-btn.active { background: #00ffcc; color: #000; border-color: #00ffcc; }
+
+        /* 알림 팝업 */
+        #notifyBox {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 0, 85, 0.85); color: #fff; padding: 8px 20px;
+            border-radius: 20px; font-weight: bold; font-size: 14px; display: none;
+            box-shadow: 0 0 20px #ff0055; z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <canvas id="gameCanvas" width="960" height="520"></canvas>
+    
+    <div id="uiOverlay">
+        <div><strong>👑 등급:</strong> <span id="rankText" class="stat-val">1등급 (x1.0)</span></div>
+        <div><strong>❤️ HP:</strong> <span id="hpText" class="stat-val">100/100</span> | <strong>⚡ EN:</strong> <span id="enText" class="stat-val">50/50</span></div>
+        <div><strong>⚔️ 출력:</strong> <span id="atkText" class="stat-val">15</span> | <strong>🔮 제어력:</strong> <span id="ctrlText" class="stat-val">5</span></div>
+        <div><strong>✨ 원소 계파:</strong> <span id="elemText" class="stat-val">🔥 불 (폭발형)</span></div>
+        <div><strong>🌟 스킬 포인트 (SP):</strong> <span id="spText" class="stat-val" style="color:#ffeb3b;">0</span></div>
+    </div>
+
+    <div id="mapText">📍 인간 지역 - 고대 마법 유적</div>
+    <div id="notifyBox">🔥 스킬 포인트(SP) 획득! [1~4] 키로 속성을 전환하세요.</div>
+
+    <!-- 원소 스킬 선택 패널 -->
+    <div id="skillPanel">
+        <button class="elem-btn active" id="btn-fire" onclick="switchElement('fire')">[1] 🔥 불</button>
+        <button class="elem-btn" id="btn-water" onclick="switchElement('water')">[2] 💧 물</button>
+        <button class="elem-btn" id="btn-earth" onclick="switchElement('earth')">[3] 🪨 흙</button>
+        <button class="elem-btn" id="btn-air" onclick="switchElement('air')">[4] 💨 공기</button>
+    </div>
+</div>
+
+<div class="controls">
+    🎮 [← / →] 이동 | [Space] 점프 | [↑] 포탈 | [Z] 원소 검격 | [X] 원소 극의 스킬 | [1~4] 속성 전환
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// 등급 배율
+const RANK_MULT = { 1: 1.0, 2: 3.0, 3: 10.0, 4: 50.0, 5: 1000.0 };
+
+// 독립된 4대 원소 데이터 세트
+const ELEMENTS = {
+    fire: {
+        name: "🔥 불 (폭발형)",
+        color: "#ff3300",
+        glow: "#ff9100",
+        zName: "불꽃 참격",
+        xName: "화염 폭발",
+        dmgBonus: 1.3
+    },
+    water: {
+        name: "💧 물 (빙결형)",
+        color: "#00bfff",
+        glow: "#00ffff",
+        zName: "수류 참격",
+        xName: "절대 영도",
+        dmgBonus: 1.0
+    },
+    earth: {
+        name: "🪨 흙 (지진형)",
+        color: "#d2b48c",
+        glow: "#ffcc66",
+        zName: "암석 강타",
+        xName: "지진 멸쇄",
+        dmgBonus: 1.5
+    },
+    air: {
+        name: "💨 공기 (질풍형)",
+        color: "#e0ffff",
+        glow: "#ffffff",
+        zName: "진공 참격",
+        xName: "질풍 난무",
+        dmgBonus: 1.1
+    }
+};
+
+const player = {
+    x: 100, y: 300, width: 24, height: 48, vx: 0, vy: 0,
+    isGrounded: false, facing: 'right', rank: 1,
+    baseHp: 100, baseEn: 50, baseAtk: 15, baseControl: 5,
+    elementKey: 'fire', sp: 0, kills: 0,
+    isAttacking: false, attackTimer: 0,
+    isSkill: false, skillTimer: 0
+};
+
+const REGIONS = [
+    { name: "인간 지역 - 고대 마법 유적", bgColor: ['#060912', '#121a2e'], platColor: '#25334d', mType: '슬라임', mHp: 40, mAtk: 5 },
+    { name: "몬스터 지역 - 생명의 대림", bgColor: ['#05140a', '#0f2b17'], platColor: '#174023', mType: '변이 야수', mHp: 150, mAtk: 20 },
+    { name: "천사 지역 - 규율의 신전", bgColor: ['#141305', '#302d0e'], platColor: '#4d4817', mType: '빛의 수호자', mHp: 600, mAtk: 80 },
+    { name: "악마 지역 - 본능의 심연", bgColor: ['#140510', '#300e28'], platColor: '#4d1741', mType: '심연 마수', mHp: 3000, mAtk: 350 },
+    { name: "초월자 지역 - 차원 균열", bgColor: ['#051214', '#0e2a30'], platColor: '#17434d', mType: '차원 파괴자', mHp: 20000, mAtk: 1500 }
+];
+
+let currentRegionIdx = 0;
+const platforms = [
+    { x: 0, y: 450, width: 960, height: 70 },
+    { x: 100, y: 350, width: 220, height: 16 },
+    { x: 640, y: 350, width: 220, height: 16 },
+    { x: 360, y: 250, width: 240, height: 16 },
+    { x: 150, y: 160, width: 180, height: 16 }
+];
+const portals = [
+    { x: 10, y: 330, width: 60, height: 120, targetDir: -1 },
+    { x: 890, y: 330, width: 60, height: 120, targetDir: 1 }
+];
+
+let monsters = [];
+let particles = [];
+let damageTexts = [];
+
+// 임팩트: 화면 흔들림(Screen Shake) 변수
+let shakeTime = 0;
+let shakeIntensity = 0;
+
+function triggerShake(duration, intensity) {
+    shakeTime = duration;
+    shakeIntensity = intensity;
+}
+
+function spawnMonsters() {
+    monsters = [];
+    const reg = REGIONS[currentRegionIdx];
+    for (let i = 0; i < 3; i++) {
+        monsters.push({
+            x: 250 + i * 220, y: 200, width: 34, height: 34,
+            hp: reg.mHp, maxHp: reg.mHp, vx: (i % 2 === 0 ? 1 : -1) * 1.5,
+            type: reg.mType, frozen: 0
+        });
+    }
+}
+spawnMonsters();
+
+const keys = {};
+window.addEventListener('keydown', e => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Space'].includes(e.key)) {
+        e.preventDefault();
+    }
+    keys[e.key] = true;
+
+    if (e.key === '1') switchElement('fire');
+    if (e.key === '2') switchElement('water');
+    if (e.key === '3') switchElement('earth');
+    if (e.key === '4') switchElement('air');
+});
+
+window.addEventListener('keyup', e => {
+    keys[e.key] = false;
+});
+
+function switchElement(elemKey) {
+    player.elementKey = elemKey;
+    document.querySelectorAll('.elem-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`btn-${elemKey}`).classList.add('active');
+}
+
+function showNotify(msg) {
+    const box = document.getElementById('notifyBox');
+    box.innerText = msg;
+    box.style.display = 'block';
+    setTimeout(() => { box.style.display = 'none'; }, 2000);
+}
+
+function addDamageText(x, y, damage, color = '#ffeb3b') {
+    damageTexts.push({ x, y, text: Math.floor(damage), opacity: 1, vy: -2, color });
+}
+
+function createImpactParticles(x, y, elemData, count = 15) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.5) * 12,
+            size: Math.random() * 6 + 2,
+            life: 22, maxLife: 22,
+            color: elemData.color,
+            glow: elemData.glow
+        });
+    }
+}
+
+function attackHit(range, isSkill = false) {
+    const elem = ELEMENTS[player.elementKey];
+    const mult = RANK_MULT[player.rank];
+    let baseDmg = (isSkill ? player.baseAtk * 3.5 : player.baseAtk) * elem.dmgBonus;
+    const dmg = baseDmg * mult;
+
+    triggerShake(isSkill ? 12 : 6, isSkill ? 8 : 4);
+
+    const hitBox = {
+        x: player.facing === 'right' ? player.x + player.width : player.x - range,
+        y: player.y - 15,
+        width: range,
+        height: player.height + 30
+    };
+
+    monsters.forEach((m, idx) => {
+        if (hitBox.x < m.x + m.width && hitBox.x + hitBox.width > m.x &&
+            hitBox.y < m.y + m.height && hitBox.y + hitBox.height > m.y) {
+            
+            m.hp -= dmg;
+            addDamageText(m.x + 10, m.y - 10, dmg, isSkill ? elem.glow : '#ffffff');
+            createImpactParticles(m.x + m.width / 2, m.y + m.height / 2, elem, isSkill ? 25 : 12);
+
+            if (player.elementKey === 'water' && isSkill) {
+                m.frozen = 60;
+            }
+
+            if (m.hp <= 0) {
+                monsters.splice(idx, 1);
+                player.kills++;
+                player.sp += 1;
+                player.baseAtk += 3;
+                player.baseControl += 2;
+
+                if (player.kills % 3 === 0 && player.rank < 5) {
+                    player.rank++;
+                    showNotify(`🎉 ${player.rank}등급으로 승급했습니다!`);
+                } else {
+                    showNotify(`🌟 SP 획득! (현재 SP: ${player.sp})`);
+                }
+
+                setTimeout(() => {
+                    const reg = REGIONS[currentRegionIdx];
+                    monsters.push({
+                        x: Math.random() * 600 + 150, y: 100,
+                        width: 34, height: 34,
+                        hp: reg.mHp, maxHp: reg.mHp,
+                        vx: 1.5, type: reg.mType, frozen: 0
+                    });
+                }, 1800);
+            }
+        }
+    });
+}
+
+function update() {
+    const speed = 5.2;
+
+    if (keys['ArrowLeft']) { player.vx = -speed; player.facing = 'left'; }
+    else if (keys['ArrowRight']) { player.vx = speed; player.facing = 'right'; }
+    else { player.vx = 0; }
+
+    if ((keys['Space'] || keys[' ']) && player.isGrounded) {
+        player.vy = -12;
+        player.isGrounded = false;
+    }
+
+    if (keys['ArrowUp']) {
+        portals.forEach(port => {
+            if (player.x < port.x + port.width && player.x + player.width > port.x &&
+                player.y < port.y + port.height && player.y + player.height > port.y) {
+                if (port.targetDir === 1 && currentRegionIdx < REGIONS.length - 1) {
+                    currentRegionIdx++; player.x = 90; spawnMonsters();
+                } else if (port.targetDir === -1 && currentRegionIdx > 0) {
+                    currentRegionIdx--; player.x = 810; spawnMonsters();
+                }
+            }
+        });
+    }
+
+    if ((keys['z'] || keys['Z']) && !player.isAttacking && !player.isSkill) {
+        player.isAttacking = true;
+        player.attackTimer = 10;
+        attackHit(65, false);
+    }
+    if (player.attackTimer > 0) player.attackTimer--; else player.isAttacking = false;
+
+    if ((keys['x'] || keys['X']) && !player.isSkill && !player.isAttacking) {
+        player.isSkill = true;
+        player.skillTimer = 20;
+        attackHit(120, true);
+    }
+    if (player.skillTimer > 0) player.skillTimer--; else player.isSkill = false;
+
+    player.vy += 0.6;
+    player.x += player.vx;
+    player.y += player.vy;
+    player.isGrounded = false;
+
+    platforms.forEach(plat => {
+        if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
+            player.y + player.height >= plat.y && player.y + player.height <= plat.y + 16 &&
+            player.vy >= 0) {
+            player.y = plat.y - player.height;
+            player.vy = 0;
+            player.isGrounded = true;
+        }
+    });
+
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+
+    monsters.forEach(m => {
+        if (m.frozen > 0) {
+            m.frozen--;
+        } else {
+            m.x += m.vx;
+            if (m.x < 50 || m.x > 880) m.vx *= -1;
+        }
+    });
+
+    particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    });
+
+    damageTexts.forEach((d, i) => {
+        d.y += d.vy; d.opacity -= 0.03;
+        if (d.opacity <= 0) damageTexts.splice(i, 1);
+    });
+
+    const elem = ELEMENTS[player.elementKey];
+    const mult = RANK_MULT[player.rank];
+    const reg = REGIONS[currentRegionIdx];
+
+    document.getElementById('mapText').innerText = `📍 ${reg.name}`;
+    document.getElementById('rankText').innerText = `${player.rank}등급 (x${mult})`;
+    document.getElementById('hpText').innerText = `${Math.floor(player.baseHp * mult)}/${Math.floor(player.baseHp * mult)}`;
+    document.getElementById('enText').innerText = `${Math.floor(player.baseEn * mult)}/${Math.floor(player.baseEn * mult)}`;
+    document.getElementById('atkText').innerText = `${Math.floor(player.baseAtk * mult)}`;
+    document.getElementById('ctrlText').innerText = `${Math.floor(player.baseControl * mult)}`;
+    document.getElementById('elemText').innerText = elem.name;
+    document.getElementById('spText').innerText = player.sp;
+}
+
+function draw() {
+    ctx.save();
+
+    if (shakeTime > 0) {
+        const dx = (Math.random() - 0.5) * shakeIntensity;
+        const dy = (Math.random() - 0.5) * shakeIntensity;
+        ctx.translate(dx, dy);
+        shakeTime--;
+    }
+
+    const reg = REGIONS[currentRegionIdx];
+    const elem = ELEMENTS[player.elementKey];
+
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, reg.bgColor[0]);
+    grad.addColorStop(1, reg.bgColor[1]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    platforms.forEach(plat => {
+        ctx.fillStyle = reg.platColor;
+        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(plat.x, plat.y, plat.width, 4);
+    });
+
+    portals.forEach(port => {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00e5ff';
+        ctx.fillStyle = 'rgba(0, 229, 255, 0.2)';
+        ctx.fillRect(port.x, port.y, port.width, port.height);
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(port.x, port.y, port.width, port.height);
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = '#00e5ff';
+        ctx.font = '12px sans-serif';
+        ctx.fillText("포탈 [↑]", port.x + 8, port.y - 10);
+    });
+
+    monsters.forEach(m => {
+        ctx.fillStyle = m.frozen > 0 ? '#00ffff' : '#ff3366';
+        ctx.beginPath();
+        ctx.arc(m.x + m.width / 2, m.y + m.height / 2, m.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(m.x, m.y - 10, m.width, 5);
+        ctx.fillStyle = '#00ffcc';
+        ctx.fillRect(m.x, m.y - 10, (m.hp / m.maxHp) * m.width, 5);
+    });
+
+    particles.forEach(p => {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.glow || p.color;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.shadowBlur = 0;
+    });
+
+    const px = player.x + player.width / 2;
+    const py = player.y;
+
+    if (player.rank >= 2) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = elem.glow;
+        ctx.strokeStyle = elem.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(px, py + 20, 28 + player.rank * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 18); ctx.lineTo(px, py + 34); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px - 8, py + 48); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px + 8, py + 48); ctx.stroke();
+
+    const dir = player.facing === 'right' ? 1 : -1;
+    ctx.beginPath(); ctx.moveTo(px, py + 22);
+
+    if (player.isAttacking) {
+        ctx.lineTo(px + (26 * dir), py + 18); ctx.stroke();
+
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = elem.glow;
+        ctx.strokeStyle = elem.color;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(px, py + 20, 45, player.facing === 'right' ? -0.8 : 2.2, player.facing === 'right' ? 0.8 : 4.0);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    } else if (player.isSkill) {
+        ctx.lineTo(px + (18 * dir), py + 10); ctx.stroke();
+
+        ctx.shadowBlur = 35;
+        ctx.shadowColor = elem.glow;
+        ctx.fillStyle = elem.color;
+        ctx.beginPath();
+        ctx.arc(px + (70 * dir), py + 20, 40, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    } else {
+        ctx.lineTo(px - 8, py + 28); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py + 22); ctx.lineTo(px + 8, py + 28); ctx.stroke();
+    }
+
+    damageTexts.forEach(d => {
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = d.color;
+        ctx.fillStyle = d.color;
+        ctx.font = 'bold 18px sans-serif';
+        ctx.globalAlpha = d.opacity;
+        ctx.fillText(d.text, d.x, d.y);
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+    });
+
+    ctx.restore();
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
+</body>
+</html>
