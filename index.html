@@ -19,7 +19,7 @@
             border: 2px solid #1a233a; 
         }
         canvas { background: #000; display: block; cursor: pointer; }
-
+        
         #uiOverlay { 
             position: absolute; top: 15px; left: 15px; 
             pointer-events: none; 
@@ -232,7 +232,7 @@
     <div id="skillModal" class="modal">
         <h2>📈 스킬 숙련도 트리</h2>
         <p style="font-size:11px; color:#88a;">현재 총 숙련도: <strong id="masteryText" style="color:#00e5ff;">0 / 5,000 Exp</strong></p>
-
+        
         <div class="tree-container">
             <div class="tree-row">
                 <button class="node-btn" id="node-t1" onclick="equipSkill('t1')">
@@ -256,7 +256,7 @@
     </div>
 
     <canvas id="gameCanvas" width="960" height="520"></canvas>
-
+    
     <div id="uiOverlay">
         <div><strong>❤️ 피 (HP):</strong> <span id="hpText" class="stat-val">100/100</span> | <strong>🛡️ 방어막:</strong> <span id="defText" class="stat-val" style="color:#00e5ff;">50/50</span></div>
         <div><strong>⚔️ 공격력:</strong> <span id="atkText" class="stat-val">15</span> | <strong>🗡️ 무기:</strong> <span id="weaponText" class="stat-val" style="color:#ffeb3b;">맨손</span></div>
@@ -289,7 +289,7 @@ const ELEMENTS = {
 const player = {
     x: 120, y: 390, width: 24, height: 48, vx: 0, vy: 0,
     isGrounded: true, facing: 'right',
-
+    
     stats: { speed: 1, power: 1, heal: 1, def: 1, hp: 1 },
     weapon: { name: "맨손", bonusAtk: 0, enhanceLv: 0 },
     armor: { name: "기본 옷", defense: 0 },
@@ -298,6 +298,7 @@ const player = {
     equippedSkill: 't1',
     ultCooldown: 0,
     maxUltCooldown: 900,
+
     hp: 100, maxHp: 100,
     shield: 50, maxShield: 50,
     atk: 15, speedVal: 5.0, dodgeRate: 0.05,
@@ -428,7 +429,7 @@ function recalculateStats() {
 function selectElement(elemKey) {
     player.elementKey = elemKey;
     document.getElementById('charSelectScreen').style.display = 'none';
-
+    
     player.x = 120;
     player.y = 390;
     player.vx = 0; player.vy = 0;
@@ -436,7 +437,7 @@ function selectElement(elemKey) {
     recalculateStats();
     player.hp = player.maxHp; 
     player.shield = player.maxShield;
-
+    
     showNotify(`🎉 ${ELEMENTS[elemKey].name} 속성을 선택했습니다! 주점으로 이동하세요.`);
 }
 
@@ -668,7 +669,7 @@ window.addEventListener('keydown', e => {
     if (e.key === 'u' || e.key === 'U') openStatModal();
     if (e.key === 'k' || e.key === 'K') openSkillModal();
     if (e.key === 'i' || e.key === 'I') openInventoryModal();
-
+    
     if (e.key === 'f' || e.key === 'F') { openNearbyTreasureBox(); }
 
     if ((e.key === 'c' || e.key === 'C') && currentMap === 'dungeon') {
@@ -897,3 +898,247 @@ function update() {
 
     player.vy += 0.6; player.x += player.vx; player.y += player.vy;
     player.isGrounded = false;
+
+    platforms.forEach(plat => {
+        if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
+            player.y + player.height >= plat.y && player.y + player.height <= plat.y + 16 &&
+            player.vy >= 0) {
+            player.y = plat.y - player.height; player.vy = 0; player.isGrounded = true;
+        }
+    });
+
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+
+    monsters.forEach(m => {
+        if (m.frozen > 0) {
+            m.frozen--;
+        } else {
+            const dist = Math.abs(player.x - m.x);
+            if (dist < 400) {
+                m.isChasing = true;
+                m.vx = player.x > m.x ? m.speed : -m.speed;
+            } else {
+                m.isChasing = false;
+                if (m.vx === 0) m.vx = m.speed;
+            }
+            m.x += m.vx;
+            if (m.x < 120 || m.x > 890) m.vx *= -1;
+
+            if (m.isBoss && m.isChasing) {
+                m.skillTimer--;
+                if (m.skillTimer <= 60 && !m.warningCircle) {
+                    m.warningCircle = { x: player.x, y: 440, radius: 80, timer: 60 };
+                }
+                if (m.skillTimer <= 0) {
+                    if (m.warningCircle && Math.abs(player.x - m.warningCircle.x) < 80 && player.y > 350) {
+                        playerTakeDamage(m.atk * 1.5);
+                        addDamageText(player.x, player.y - 20, "BOSS IMPACT!", "#ff0055");
+                    }
+                    m.warningCircle = null;
+                    m.skillTimer = 220;
+                }
+            }
+        }
+
+        if (Math.abs(player.x + player.width / 2 - m.x) < m.radius + 10 &&
+            Math.abs(player.y + player.height / 2 - m.y) < m.radius + 20) {
+            if (now - player.lastHitTime > 900) {
+                playerTakeDamage(m.atk);
+            }
+        }
+    });
+
+    skillVisuals.forEach((v, i) => {
+        v.life--;
+        if (v.type === 'meteor') v.y += 14;
+        if (v.life <= 0) skillVisuals.splice(i, 1);
+    });
+
+    particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    });
+
+    damageTexts.forEach((d, i) => {
+        d.y += d.vy; d.opacity -= 0.03;
+        if (d.opacity <= 0) damageTexts.splice(i, 1);
+    });
+
+    document.getElementById('hpText').innerText = `${Math.floor(player.hp)}/${player.maxHp}`;
+    document.getElementById('defText').innerText = `${Math.floor(player.shield)}/${player.maxShield}`;
+    document.getElementById('atkText').innerText = `${Math.floor(player.atk)}`;
+    document.getElementById('weaponText').innerText = `${player.weapon.name} (+${player.weapon.enhanceLv || 0})`;
+    document.getElementById('armorText').innerText = `${player.armor.name} (방어 ${player.armor.defense})`;
+    document.getElementById('goldText').innerText = `${player.gold}`;
+
+    const cdSec = Math.ceil(player.ultCooldown / 60);
+    document.getElementById('cdText').innerText = player.ultCooldown > 0 ? `${cdSec}s` : "READY";
+}
+
+function draw() {
+    ctx.save();
+    if (shakeTime > 0) {
+        ctx.translate((Math.random() - 0.5) * shakeIntensity, (Math.random() - 0.5) * shakeIntensity);
+        shakeTime--;
+    }
+
+    if (currentMap === 'town') {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        townBuildings.forEach(b => {
+            ctx.fillStyle = b.color; ctx.fillRect(b.x, 280, b.width, 160);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(b.name, b.x + 10, 265);
+            
+            if (b.type === 'tavern' && Math.abs(player.x - (b.x + 30)) < 50) {
+                ctx.fillStyle = '#ffeb3b'; ctx.fillText("[Q] 주점 진입", b.x - 5, 240);
+            }
+            if (b.type === 'forge' && Math.abs(player.x - (b.x + 30)) < 50) {
+                ctx.fillStyle = '#00ffcc'; ctx.fillText("[E] 대장간 진입", b.x - 10, 240);
+            }
+            if (b.type === 'shop' && Math.abs(player.x - (b.x + 30)) < 50) {
+                ctx.fillStyle = '#ff0055'; ctx.fillText("[T] 무기 상점", b.x - 5, 240);
+            }
+        });
+    } else {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#1a0505'); grad.addColorStop(1, '#080202');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = 'rgba(255, 0, 85, 0.15)';
+        ctx.fillRect(spawnNest.x, spawnNest.y, spawnNest.width, spawnNest.height);
+        ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 1;
+        ctx.strokeRect(spawnNest.x, spawnNest.y, spawnNest.width, spawnNest.height);
+        ctx.fillStyle = '#ff0055'; ctx.font = '11px sans-serif';
+        ctx.fillText("⚠️ 마물 둥지 (스폰 지역)", spawnNest.x + 5, spawnNest.y - 8);
+
+        ctx.fillStyle = '#00ffcc'; ctx.font = '12px sans-serif';
+        ctx.fillText("🌀 마을 귀환 [↑]", 20, 320);
+        ctx.strokeStyle = '#00ffcc'; ctx.strokeRect(20, 330, 50, 110);
+    }
+
+    platforms.forEach(plat => {
+        ctx.fillStyle = '#111827'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+        ctx.fillStyle = '#00e5ff'; ctx.fillRect(plat.x, plat.y, plat.width, 3);
+    });
+
+    treasureBoxes.forEach(box => {
+        ctx.fillStyle = '#ffb703';
+        ctx.shadowBlur = 12; ctx.shadowColor = '#ffb703';
+        ctx.fillRect(box.x - 12, box.y - 12, 24, 20);
+        ctx.shadowBlur = 0;
+
+        if (Math.abs(player.x - box.x) < 40) {
+            ctx.fillStyle = '#ffeb3b'; ctx.font = '11px sans-serif';
+            ctx.fillText("[F] 상자 열기", box.x - 28, box.y - 22);
+        }
+    });
+
+    monsters.forEach(m => {
+        if (m.warningCircle) {
+            ctx.fillStyle = 'rgba(255, 0, 85, 0.35)';
+            ctx.beginPath(); ctx.arc(m.warningCircle.x, m.warningCircle.y, m.warningCircle.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#ff0055'; ctx.stroke();
+        }
+    });
+
+    monsters.forEach(m => {
+        ctx.fillStyle = m.frozen > 0 ? '#00ffff' : (m.isBoss ? '#ff3300' : (m.isChasing ? '#ff0055' : '#00ff88'));
+        ctx.shadowBlur = m.isChasing ? 18 : 10;
+        ctx.shadowColor = m.isBoss ? '#ff3300' : '#00ff88';
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        if (m.isChasing) {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(m.x - 4, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(m.x + 4, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+        }
+
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, m.radius * 2, 4);
+        ctx.fillStyle = '#ff0055'; ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, (m.hp / m.maxHp) * (m.radius * 2), 4);
+    });
+
+    skillVisuals.forEach(v => {
+        ctx.shadowBlur = 25; ctx.shadowColor = v.color;
+        ctx.fillStyle = v.color;
+        if (v.type === 'meteor') {
+            ctx.beginPath(); ctx.arc(v.x, v.y, v.size, 0, Math.PI * 2); ctx.fill();
+        } else if (v.type === 'wave') {
+            ctx.fillRect(v.x, v.y - 35, v.width, 55);
+        } else if (v.type === 'earthfall') {
+            ctx.fillRect(v.x - 35, v.y, 70, 130);
+        } else if (v.type === 'tornado') {
+            ctx.beginPath(); ctx.arc(v.x, v.y, 55, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+    });
+
+    particles.forEach(p => {
+        ctx.shadowBlur = 8; ctx.shadowColor = p.glow || p.color;
+        ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.shadowBlur = 0;
+    });
+
+    // 졸라맨 캐릭터 항상 렌더링하도록 보장
+    const elem = ELEMENTS[player.elementKey] || { color: "#ffffff", glow: "#ffffff" };
+    const px = player.x + player.width / 2;
+    const py = player.y;
+
+    if (player.shield > 0) {
+        ctx.shadowBlur = 12; ctx.shadowColor = '#00e5ff';
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(px, py + 20, 26, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    // 졸라맨 몸체 그리기 (항상 흰색 선으로 또렷하게 표시)
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 18); ctx.lineTo(px, py + 34); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px - 8, py + 48); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px + 8, py + 48); ctx.stroke();
+
+    const dir = player.facing === 'right' ? 1 : -1;
+    ctx.beginPath(); ctx.moveTo(px, py + 22);
+
+    if (player.isUlt) {
+        ctx.shadowBlur = 40; ctx.shadowColor = elem.glow;
+        ctx.strokeStyle = elem.color; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(px, py + 20, 70, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+    } else if (player.isAttacking) {
+        ctx.lineTo(px + (26 * dir), py + 18); ctx.stroke();
+        ctx.shadowBlur = 20; ctx.shadowColor = elem.glow; ctx.strokeStyle = elem.color; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(px, py + 20, 40, player.facing === 'right' ? -0.8 : 2.2, player.facing === 'right' ? 0.8 : 4.0); ctx.stroke();
+        ctx.shadowBlur = 0;
+    } else if (player.isSkill) {
+        ctx.lineTo(px + (18 * dir), py + 10); ctx.stroke();
+        ctx.shadowBlur = 30; ctx.shadowColor = elem.glow; ctx.fillStyle = elem.color;
+        ctx.beginPath(); ctx.arc(px + (60 * dir), py + 20, 35, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+    } else {
+        ctx.lineTo(px - 8, py + 28); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py + 22); ctx.lineTo(px + 8, py + 28); ctx.stroke();
+    }
+
+    damageTexts.forEach(d => {
+        ctx.shadowBlur = 6; ctx.shadowColor = d.color; ctx.fillStyle = d.color;
+        ctx.font = 'bold 16px sans-serif'; ctx.globalAlpha = d.opacity;
+        ctx.fillText(d.text, d.x, d.y); ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+    });
+
+    ctx.restore();
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
+</body>
+</html>
