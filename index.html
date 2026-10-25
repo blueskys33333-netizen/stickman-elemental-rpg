@@ -368,22 +368,24 @@ function update() {
         player.vy = -11; player.isGrounded = false;
     }
 
-    // 포탈 상호작용 [↑]
+    // 포탈 상호작용 [↑] (이동 후 바깥쪽 안전 좌표 배치로 무한 왕복 해결)
     if (keys['ArrowUp']) {
-        if (currentMap === 'town' && player.x > 780) {
+        if (currentMap === 'town' && player.x > 770 && player.x < 860) {
             if (activeQuest) {
                 currentMap = 'dungeon';
-                player.x = 80;
+                player.x = 120; // 던전 안쪽으로 배치
                 spawnSlimes();
                 showNotify("⚔️ [슬라임 성지] 입장!");
+                keys['ArrowUp'] = false;
             } else {
                 showNotify("⚠️ 주점에서 퀘스트를 먼저 수락하세요!");
             }
-        } else if (currentMap === 'dungeon' && player.x < 100) {
+        } else if (currentMap === 'dungeon' && player.x < 90) {
             currentMap = 'town';
-            player.x = 750;
+            player.x = 720; // 마을 포탈 앞쪽 안전지대로 배치
             monsters = [];
             showNotify("🏡 [마을] 복귀!");
+            keys['ArrowUp'] = false;
         }
     }
 
