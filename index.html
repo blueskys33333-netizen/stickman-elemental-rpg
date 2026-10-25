@@ -3,156 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>졸라맨 원소 RPG - 퀘스트 & 육성</title>
+    <title>졸라맨 원소 RPG - 마을 & 슬라임 성지</title>
     <style>
         body { 
             margin: 0; padding: 0; 
-            background-color: #06080d; color: #fff; 
+            background-color: #050811; color: #fff; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            min-height: 100vh; overflow: hidden; 
+            min-height: 100vh; overflow: hidden; user-select: none;
         }
         #gameContainer { 
             position: relative; 
-            box-shadow: 0 0 45px rgba(0, 229, 255, 0.3); 
+            box-shadow: 0 0 35px rgba(0, 229, 255, 0.25); 
             border-radius: 12px; overflow: hidden; 
             border: 2px solid #1a233a; 
         }
-        canvas { background: #000; display: block; }
+        canvas { background: #000; display: block; cursor: pointer; }
         
-        /* UI 오버레이 */
         #uiOverlay { 
             position: absolute; top: 15px; left: 15px; 
             pointer-events: none; 
-            background: rgba(8, 12, 20, 0.9); 
-            padding: 14px 20px; border-radius: 10px; 
-            border: 1px solid #00e5ff; font-size: 13px; line-height: 1.6; 
+            background: rgba(8, 12, 20, 0.88); 
+            padding: 12px 18px; border-radius: 10px; 
+            border: 1px solid #00e5ff; font-size: 13px; line-height: 1.5; 
         }
         #questBox {
             position: absolute; top: 15px; right: 15px;
-            background: rgba(8, 12, 20, 0.9);
+            background: rgba(8, 12, 20, 0.88);
             padding: 10px 18px; border-radius: 8px;
             border: 1px solid #ffeb3b; font-size: 13px; color: #ffeb3b;
+            max-width: 280px;
         }
         .stat-val { color: #00ffcc; font-weight: bold; }
-        .controls { 
-            margin-top: 12px; color: #9aaec4; font-size: 13px; 
-            background: #101622; padding: 10px 24px; border-radius: 20px; 
-            border: 1px solid #233148; 
-        }
 
-        /* 원소 선택 화면 오버레이 */
+        /* 모달 팝업 (주점 / 대장간 / 상점 UI) */
+        .modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(10, 15, 26, 0.96); border: 2px solid #00e5ff;
+            border-radius: 12px; padding: 20px; width: 420px; text-align: center;
+            display: none; z-index: 30; box-shadow: 0 0 30px rgba(0, 229, 255, 0.5);
+        }
+        .modal h2 { margin-top: 0; color: #ffeb3b; font-size: 20px; }
+        .modal p { font-size: 13px; color: #a0b2ce; line-height: 1.5; }
+        .modal-btn {
+            background: #18253a; color: #00ffcc; border: 1px solid #00ffcc;
+            padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            margin: 6px; transition: all 0.2s;
+        }
+        .modal-btn:hover { background: #00ffcc; color: #000; }
+
+        /* 캐릭터 생성 화면 */
         #charSelectScreen {
             position: absolute; top: 0; left: 0; width: 960px; height: 520px;
-            background: rgba(5, 8, 15, 0.95);
+            background: rgba(5, 8, 15, 0.96);
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 20;
+            z-index: 40;
         }
-        .select-title { font-size: 26px; color: #00e5ff; margin-bottom: 25px; font-weight: bold; text-shadow: 0 0 10px #00e5ff; }
-        .elem-cards { display: flex; gap: 20px; }
+        .select-title { font-size: 24px; color: #00e5ff; margin-bottom: 20px; font-weight: bold; }
+        .elem-cards { display: flex; gap: 15px; }
         .elem-card {
-            background: #121a2e; border: 2px solid #25334d; border-radius: 12px;
-            padding: 20px; width: 160px; text-align: center; cursor: pointer; transition: all 0.2s;
+            background: #121a2e; border: 2px solid #25334d; border-radius: 10px;
+            padding: 15px; width: 150px; text-align: center; cursor: pointer; transition: all 0.2s;
         }
-        .elem-card:hover { border-color: #00ffcc; transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0,255,204,0.3); }
-        .elem-card h3 { margin: 5px 0 10px 0; color: #fff; }
-        .elem-card p { font-size: 11px; color: #9aaec4; line-height: 1.4; }
+        .elem-card:hover { border-color: #00ffcc; transform: translateY(-5px); }
 
         #notifyBox {
-            position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 0, 85, 0.85); color: #fff; padding: 8px 20px;
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 0, 85, 0.9); color: #fff; padding: 8px 20px;
             border-radius: 20px; font-weight: bold; font-size: 14px; display: none;
-            box-shadow: 0 0 20px #ff0055; z-index: 10;
+            box-shadow: 0 0 20px #ff0055; z-index: 25;
         }
     </style>
 </head>
 <body>
 
 <div id="gameContainer">
-    <!-- 게임 시작 시 원소 선택 화면 -->
+    <!-- 1. 시작 속성 선택 화면 -->
     <div id="charSelectScreen">
-        <div class="select-title">✨ 주력 원소를 선택하세요 (영구 결정)</div>
+        <div class="select-title">✨ 주력 원소를 선택하세요</div>
         <div class="elem-cards">
             <div class="elem-card" onclick="selectElement('fire')">
-                <h3 style="color:#ff3300;">🔥 불</h3>
-                <p>폭발적인 광역 화력과 강력한 딜링 특화</p>
+                <h3 style="color:#ff3300; margin:5px 0;">🔥 불</h3>
+                <p style="font-size:11px; color:#aaa;">폭발 화력 및 광역 딜링 특화</p>
             </div>
             <div class="elem-card" onclick="selectElement('water')">
-                <h3 style="color:#00bfff;">💧 물</h3>
-                <p>적을 얼리는 빙결 제어 및 안정적 전투</p>
+                <h3 style="color:#00bfff; margin:5px 0;">💧 물</h3>
+                <p style="font-size:11px; color:#aaa;">빙결 제어 및 안정적 속성</p>
             </div>
             <div class="elem-card" onclick="selectElement('earth')">
-                <h3 style="color:#d2b48c;">🪨 흙</h3>
-                <p>묵직한 중량 타격과 튼튼한 방어력</p>
+                <h3 style="color:#d2b48c; margin:5px 0;">🪨 흙</h3>
+                <p style="font-size:11px; color:#aaa;">중량 공격 및 강력한 방어</p>
             </div>
             <div class="elem-card" onclick="selectElement('air')">
-                <h3 style="color:#e0ffff;">💨 공기</h3>
-                <p>초고속 연속 베기와 화려한 질풍 기동</p>
+                <h3 style="color:#e0ffff; margin:5px 0;">💨 공기</h3>
+                <p style="font-size:11px; color:#aaa;">초고속 연타 및 질풍 참격</p>
             </div>
         </div>
+    </div>
+
+    <!-- 2. 주점 퀘스트 모달 -->
+    <div id="tavernModal" class="modal">
+        <h2>🍺 평화로운 주점 게시판</h2>
+        <p id="tavernDesc">주점 주인이 새로운 의뢰를 건넸습니다.</p>
+        <div id="questOptions"></div>
+        <button class="modal-btn" onclick="closeModals()" style="border-color:#ff0055; color:#ff0055;">닫기</button>
+    </div>
+
+    <!-- 3. 대장간/상점 모달 -->
+    <div id="shopModal" class="modal">
+        <h2 id="shopTitle">🔨 대장간</h2>
+        <p id="shopDesc">골드를 사용해 공격력을 강화할 수 있습니다.</p>
+        <button class="modal-btn" onclick="upgradeAtk()">공격력 강화 (+5 ATK / 200 Gold)</button>
+        <button class="modal-btn" onclick="closeModals()">나가기</button>
     </div>
 
     <canvas id="gameCanvas" width="960" height="520"></canvas>
     
     <div id="uiOverlay">
-        <div><strong>👑 등급:</strong> <span id="rankText" class="stat-val">1등급 (x1.0)</span></div>
+        <div><strong>👑 등급:</strong> <span id="rankText" class="stat-val">1등급</span></div>
         <div><strong>❤️ HP:</strong> <span id="hpText" class="stat-val">100/100</span></div>
-        <div><strong>⚔️ 공격력:</strong> <span id="atkText" class="stat-val">15</span></div>
-        <div><strong>✨ 내 원소:</strong> <span id="elemText" class="stat-val">-</span></div>
-        <div><strong>🌟 SP:</strong> <span id="spText" class="stat-val" style="color:#ffeb3b;">0</span></div>
+        <div><strong>⚔️ 공격력:</strong> <span id="atkText" class="stat-val">15</span> | <strong>💰 골드:</strong> <span id="goldText" class="stat-val" style="color:#ffeb3b;">0</span></div>
+        <div><strong>✨ 속성:</strong> <span id="elemText" class="stat-val">-</span> | <strong>🌟 SP:</strong> <span id="spText" class="stat-val" style="color:#ffeb3b;">0</span></div>
     </div>
 
-    <div id="questBox">📜 퀘스트: <span id="questText">원소를 선택하고 사냥을 시작하세요!</span></div>
-    <div id="notifyBox">알림 메시지</div>
-</div>
-
-<div class="controls">
-    🎮 [← / →] 이동 | [Space] 점프 | [↑] 포탈 | [Z] 원소 검격 | [X] 원소 극의 스킬
+    <div id="questBox">📜 퀘스트: <span id="questText">주점에 가서 퀘스트를 수락하세요!</span></div>
+    <div id="notifyBox">알림</div>
 </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-const RANK_MULT = { 1: 1.0, 2: 3.0, 3: 10.0, 4: 50.0, 5: 1000.0 };
-
 const ELEMENTS = {
-    fire: { name: "🔥 불 (폭발형)", color: "#ff3300", glow: "#ff9100", dmgBonus: 1.3 },
-    water: { name: "💧 물 (빙결형)", color: "#00bfff", glow: "#00ffff", dmgBonus: 1.0 },
-    earth: { name: "🪨 흙 (지진형)", color: "#d2b48c", glow: "#ffcc66", dmgBonus: 1.5 },
-    air: { name: "💨 공기 (질풍형)", color: "#e0ffff", glow: "#ffffff", dmgBonus: 1.1 }
+    fire: { name: "🔥 불", color: "#ff3300", glow: "#ff9100", dmgBonus: 1.3 },
+    water: { name: "💧 물", color: "#00bfff", glow: "#00ffff", dmgBonus: 1.0 },
+    earth: { name: "🪨 흙", color: "#d2b48c", glow: "#ffcc66", dmgBonus: 1.5 },
+    air: { name: "💨 공기", color: "#e0ffff", glow: "#ffffff", dmgBonus: 1.1 }
 };
 
 const player = {
-    x: 100, y: 300, width: 24, height: 48, vx: 0, vy: 0,
+    x: 120, y: 350, width: 24, height: 48, vx: 0, vy: 0,
     isGrounded: false, facing: 'right', rank: 1,
-    baseHp: 100, baseAtk: 15,
-    elementKey: null, sp: 0, kills: 0,
-    isAttacking: false, attackTimer: 0,
-    isSkill: false, skillTimer: 0
+    baseHp: 100, baseAtk: 15, gold: 0, sp: 0,
+    elementKey: null, isAttacking: false, attackTimer: 0, isSkill: false, skillTimer: 0
 };
 
-let gameStarted = false;
-let currentQuestIdx = 0;
-const quests = [
-    { title: "슬라임 3마리 토벌하기", targetKills: 3 },
-    { title: "고대 유적의 포탈을 타고 이동하기", targetRegion: 1 },
-    { title: "2등급으로 승급하기", targetRank: 2 }
-];
+// 맵 구조: 'town' (마을), 'dungeon' (슬라임 성지)
+let currentMap = 'town';
+let activeQuest = null; // { id, title, target: 5, current: 0, rewardGold: 500, rewardSp: 2 }
 
-const REGIONS = [
-    { name: "인간 지역 - 고대 마법 유적", bgColor: ['#060912', '#121a2e'], platColor: '#25334d', mType: '슬라임', mHp: 40 },
-    { name: "몬스터 지역 - 생명의 대림", bgColor: ['#05140a', '#0f2b17'], platColor: '#174023', mType: '변이 야수', mHp: 150 }
+// 마을 지형물 (주점, 대장간, 상점, 던전 포탈)
+const townBuildings = [
+    { name: "🍺 주점", x: 150, width: 100, color: "#8b5a2b", type: 'tavern' },
+    { name: "🔨 대장간", x: 350, width: 90, color: "#4a5568", type: 'forge' },
+    { name: "🛒 상점", x: 530, width: 90, color: "#2b6cb0", type: 'shop' },
+    { name: "🌀 던전 포탈", x: 800, width: 70, color: "#805ad5", type: 'portal' }
 ];
-let currentRegionIdx = 0;
 
 const platforms = [
-    { x: 0, y: 450, width: 960, height: 70 },
-    { x: 100, y: 350, width: 220, height: 16 },
-    { x: 640, y: 350, width: 220, height: 16 },
-    { x: 360, y: 250, width: 240, height: 16 }
+    { x: 0, y: 440, width: 960, height: 80 }
 ];
-const portals = [{ x: 890, y: 330, width: 60, height: 120, targetDir: 1 }];
 
 let monsters = [];
 let particles = [];
@@ -160,59 +170,137 @@ let damageTexts = [];
 let shakeTime = 0, shakeIntensity = 0;
 
 function triggerShake(duration, intensity) {
-    shakeTime = duration;
-    shakeIntensity = intensity;
+    shakeTime = duration; shakeIntensity = intensity;
 }
 
 function selectElement(elemKey) {
     player.elementKey = elemKey;
-    gameStarted = true;
     document.getElementById('charSelectScreen').style.display = 'none';
-    spawnMonsters();
-    updateQuestText();
-    showNotify(`🎉 ${ELEMENTS[elemKey].name} 계파로 각성했습니다!`);
-}
-
-function spawnMonsters() {
-    monsters = [];
-    const reg = REGIONS[currentRegionIdx] || REGIONS[0];
-    for (let i = 0; i < 3; i++) {
-        monsters.push({
-            x: 250 + i * 220, y: 200, width: 34, height: 34,
-            hp: reg.mHp, maxHp: reg.mHp, vx: (i % 2 === 0 ? 1 : -1) * 1.5,
-            type: reg.mType, frozen: 0
-        });
-    }
+    showNotify(`🎉 ${ELEMENTS[elemKey].name} 속성을 선택했습니다! 주점으로 이동하세요.`);
 }
 
 function showNotify(msg) {
     const box = document.getElementById('notifyBox');
-    box.innerText = msg;
-    box.style.display = 'block';
+    box.innerText = msg; box.style.display = 'block';
     setTimeout(() => { box.style.display = 'none'; }, 2500);
 }
 
-function updateQuestText() {
-    const qBox = document.getElementById('questText');
-    if (currentQuestIdx === 0) {
-        qBox.innerText = `슬라임 토벌 (${player.kills}/3)`;
-        if (player.kills >= 3) {
-            currentQuestIdx++;
-            player.sp += 2;
-            showNotify("📜 퀘스트 완료! SP +2 획득");
-            updateQuestText();
-        }
-    } else if (currentQuestIdx === 1) {
-        qBox.innerText = `포탈을 타고 다음 지역으로 이동하기 [↑]`;
+function closeModals() {
+    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+}
+
+// 주점 퀘스트 열기
+function openTavern() {
+    closeModals();
+    const modal = document.getElementById('tavernModal');
+    const options = document.getElementById('questOptions');
+    options.innerHTML = '';
+
+    if (!activeQuest) {
+        options.innerHTML = `
+            <div style="background:#182234; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #ffeb3b;">
+                <h4 style="margin:0 0 5px 0; color:#ffeb3b;">🟢 [초급] 슬라임 성지 소탕</h4>
+                <p style="margin:0; font-size:12px;">슬라임 성지에서 슬라임 5마리를 처치하세요.</p>
+                <p style="margin:5px 0 0 0; color:#00ffcc; font-size:12px;">💰 보상: 500 Gold | 🌟 SP +2</p>
+                <button class="modal-btn" onclick="acceptQuest(1)">퀘스트 수락</button>
+            </div>
+        `;
+    } else if (activeQuest.current >= activeQuest.target) {
+        options.innerHTML = `
+            <div style="background:#182234; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #00ffcc;">
+                <h3 style="color:#00ffcc;">🎉 퀘스트 완료 가능!</h3>
+                <p>보상: ${activeQuest.rewardGold} 골드, ${activeQuest.rewardSp} SP</p>
+                <button class="modal-btn" onclick="completeQuest()">보상 받기</button>
+            </div>
+        `;
     } else {
-        qBox.innerText = `자유 탐험 및 성장 중!`;
+        options.innerHTML = `<p>현재 진행 중인 퀘스트: <strong>${activeQuest.title} (${activeQuest.current}/${activeQuest.target})</strong></p>`;
+    }
+    modal.style.display = 'block';
+}
+
+function acceptQuest(questId) {
+    activeQuest = {
+        id: 1,
+        title: "슬라임 5마리 처치",
+        target: 5,
+        current: 0,
+        rewardGold: 500,
+        rewardSp: 2
+    };
+    closeModals();
+    showNotify("📜 퀘스트 수락! 오른쪽 [던전 포탈]로 이동하세요.");
+    updateQuestUI();
+}
+
+function completeQuest() {
+    player.gold += activeQuest.rewardGold;
+    player.sp += activeQuest.rewardSp;
+    showNotify(`🎁 퀘스트 완료! +${activeQuest.rewardGold}G, +${activeQuest.rewardSp}SP 획득`);
+    activeQuest = null;
+    closeModals();
+    updateQuestUI();
+}
+
+function updateQuestUI() {
+    const qBox = document.getElementById('questText');
+    if (!activeQuest) {
+        qBox.innerText = "주점에 가서 새로운 퀘스트를 받으세요!";
+    } else {
+        qBox.innerText = `${activeQuest.title} (${activeQuest.current}/${activeQuest.target})`;
     }
 }
 
+function openShop(type) {
+    closeModals();
+    const modal = document.getElementById('shopModal');
+    document.getElementById('shopTitle').innerText = type === 'forge' ? '🔨 대장간' : '🛒 잡화 상점';
+    modal.style.display = 'block';
+}
+
+function upgradeAtk() {
+    if (player.gold >= 200) {
+        player.gold -= 200;
+        player.baseAtk += 5;
+        showNotify("⚔️ 공격력이 +5 강화되었습니다!");
+    } else {
+        showNotify("❌ 골드가 부족합니다! (200 골드 필요)");
+    }
+}
+
+// 슬라임 성지 몬스터 스폰 (대형, 중형, 소형 슬라임)
+function spawnSlimes() {
+    monsters = [];
+    const types = [
+        { name: "대형 대왕 슬라임", radius: 30, hp: 180, speed: 0.8 },
+        { name: "중형 슬라임", radius: 20, hp: 90, speed: 1.4 },
+        { name: "소형 미니 슬라임", radius: 12, hp: 40, speed: 2.2 }
+    ];
+
+    for (let i = 0; i < 5; i++) {
+        const t = types[i % 3];
+        monsters.push({
+            x: 300 + i * 130, y: 380,
+            radius: t.radius, hp: t.hp, maxHp: t.hp,
+            vx: (i % 2 === 0 ? 1 : -1) * t.speed,
+            name: t.name, frozen: 0
+        });
+    }
+}
+
+// 키 입력 이벤트
 const keys = {};
 window.addEventListener('keydown', e => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Space'].includes(e.key)) e.preventDefault();
     keys[e.key] = true;
+
+    // 상호작용 키
+    if (e.key === 'q' || e.key === 'Q') {
+        if (currentMap === 'town' && Math.abs(player.x - 180) < 60) openTavern();
+    }
+    if (e.key === 'e' || e.key === 'E') {
+        if (currentMap === 'town' && Math.abs(player.x - 385) < 50) openShop('forge');
+    }
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
 
@@ -220,102 +308,94 @@ function addDamageText(x, y, damage, color = '#ffeb3b') {
     damageTexts.push({ x, y, text: Math.floor(damage), opacity: 1, vy: -2, color });
 }
 
-function createImpactParticles(x, y, elemData, count = 15) {
+function createImpactParticles(x, y, elemData, count = 12) {
     for (let i = 0; i < count; i++) {
         particles.push({
-            x: x, y: y,
-            vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12,
-            size: Math.random() * 6 + 2, life: 22, maxLife: 22,
+            x, y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10,
+            size: Math.random() * 5 + 2, life: 20, maxLife: 20,
             color: elemData.color, glow: elemData.glow
         });
     }
 }
 
 function attackHit(range, isSkill = false) {
-    if (!gameStarted) return;
+    if (!player.elementKey) return;
     const elem = ELEMENTS[player.elementKey];
-    const mult = RANK_MULT[player.rank];
-    let baseDmg = (isSkill ? player.baseAtk * 3.5 : player.baseAtk) * elem.dmgBonus;
-    const dmg = baseDmg * mult;
+    let dmg = (isSkill ? player.baseAtk * 3.2 : player.baseAtk) * elem.dmgBonus;
 
-    triggerShake(isSkill ? 12 : 6, isSkill ? 8 : 4);
+    triggerShake(isSkill ? 10 : 5, isSkill ? 7 : 3);
 
     const hitBox = {
         x: player.facing === 'right' ? player.x + player.width : player.x - range,
-        y: player.y - 15, width: range, height: player.height + 30
+        y: player.y - 10, width: range, height: player.height + 20
     };
 
     monsters.forEach((m, idx) => {
-        if (hitBox.x < m.x + m.width && hitBox.x + hitBox.width > m.x &&
-            hitBox.y < m.y + m.height && hitBox.y + hitBox.height > m.y) {
+        if (hitBox.x < m.x + m.radius && hitBox.x + hitBox.width > m.x - m.radius &&
+            hitBox.y < m.y + m.radius && hitBox.y + hitBox.height > m.y - m.radius) {
             
             m.hp -= dmg;
-            addDamageText(m.x + 10, m.y - 10, dmg, isSkill ? elem.glow : '#ffffff');
-            createImpactParticles(m.x + m.width / 2, m.y + m.height / 2, elem, isSkill ? 25 : 12);
+            addDamageText(m.x, m.y - m.radius, dmg, isSkill ? elem.glow : '#ffffff');
+            createImpactParticles(m.x, m.y, elem, isSkill ? 20 : 10);
 
             if (player.elementKey === 'water' && isSkill) m.frozen = 60;
 
             if (m.hp <= 0) {
                 monsters.splice(idx, 1);
-                player.kills++;
-                player.sp += 1;
-                player.baseAtk += 3;
-                updateQuestText();
+                player.gold += 30;
 
-                if (player.kills % 5 === 0 && player.rank < 5) {
-                    player.rank++;
-                    showNotify(`🎉 ${player.rank}등급으로 승급했습니다!`);
-                } else {
-                    showNotify(`🌟 SP 획득! (현재 SP: ${player.sp})`);
+                if (activeQuest && activeQuest.current < activeQuest.target) {
+                    activeQuest.current++;
+                    updateQuestUI();
+                    if (activeQuest.current >= activeQuest.target) {
+                        showNotify("🎉 퀘스트 목표 달성! 주점으로 돌아가세요.");
+                    }
                 }
-
-                setTimeout(() => {
-                    const reg = REGIONS[currentRegionIdx] || REGIONS[0];
-                    monsters.push({
-                        x: Math.random() * 600 + 150, y: 100,
-                        width: 34, height: 34, hp: reg.mHp, maxHp: reg.mHp,
-                        vx: 1.5, type: reg.mType, frozen: 0
-                    });
-                }, 1500);
             }
         }
     });
 }
 
 function update() {
-    if (!gameStarted) return;
-    const speed = 5.2;
+    if (!player.elementKey) return;
+    const speed = 5.0;
 
     if (keys['ArrowLeft']) { player.vx = -speed; player.facing = 'left'; }
     else if (keys['ArrowRight']) { player.vx = speed; player.facing = 'right'; }
     else { player.vx = 0; }
 
     if ((keys['Space'] || keys[' ']) && player.isGrounded) {
-        player.vy = -12;
-        player.isGrounded = false;
+        player.vy = -11; player.isGrounded = false;
     }
 
+    // 포탈 상호작용 [↑]
     if (keys['ArrowUp']) {
-        portals.forEach(port => {
-            if (player.x < port.x + port.width && player.x + player.width > port.x &&
-                player.y < port.y + port.height && player.y + player.height > port.y) {
-                if (currentRegionIdx < REGIONS.length - 1) {
-                    currentRegionIdx++; player.x = 90; spawnMonsters();
-                    if (currentQuestIdx === 1) { currentQuestIdx++; showNotify("📜 퀘스트 완료! 다음 지역 진입"); updateQuestText(); }
-                }
+        if (currentMap === 'town' && player.x > 780) {
+            if (activeQuest) {
+                currentMap = 'dungeon';
+                player.x = 80;
+                spawnSlimes();
+                showNotify("⚔️ [슬라임 성지] 입장!");
+            } else {
+                showNotify("⚠️ 주점에서 퀘스트를 먼저 수락하세요!");
             }
-        });
+        } else if (currentMap === 'dungeon' && player.x < 100) {
+            currentMap = 'town';
+            player.x = 750;
+            monsters = [];
+            showNotify("🏡 [마을] 복귀!");
+        }
     }
 
     if ((keys['z'] || keys['Z']) && !player.isAttacking && !player.isSkill) {
         player.isAttacking = true; player.attackTimer = 10;
-        attackHit(65, false);
+        attackHit(60, false);
     }
     if (player.attackTimer > 0) player.attackTimer--; else player.isAttacking = false;
 
     if ((keys['x'] || keys['X']) && !player.isSkill && !player.isAttacking) {
         player.isSkill = true; player.skillTimer = 20;
-        attackHit(120, true);
+        attackHit(110, true);
     }
     if (player.skillTimer > 0) player.skillTimer--; else player.isSkill = false;
 
@@ -337,11 +417,12 @@ function update() {
     if (player.x < 0) player.x = 0;
     if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
 
+    // 슬라임 이동 AI
     monsters.forEach(m => {
         if (m.frozen > 0) m.frozen--;
         else {
             m.x += m.vx;
-            if (m.x < 50 || m.x > 880) m.vx *= -1;
+            if (m.x < 150 || m.x > 880) m.vx *= -1;
         }
     });
 
@@ -355,14 +436,11 @@ function update() {
         if (d.opacity <= 0) damageTexts.splice(i, 1);
     });
 
-    const elem = ELEMENTS[player.elementKey];
-    const mult = RANK_MULT[player.rank];
-
-    document.getElementById('rankText').innerText = `${player.rank}등급 (x${mult})`;
-    document.getElementById('hpText').innerText = `${Math.floor(player.baseHp * mult)}/${Math.floor(player.baseHp * mult)}`;
-    document.getElementById('atkText').innerText = `${Math.floor(player.baseAtk * mult)}`;
-    document.getElementById('elemText').innerText = elem.name;
-    document.getElementById('spText').innerText = player.sp;
+    document.getElementById('hpText').innerText = `${player.baseHp}/${player.baseHp}`;
+    document.getElementById('atkText').innerText = `${player.baseAtk}`;
+    document.getElementById('goldText').innerText = `${player.gold}`;
+    document.getElementById('elemText').innerText = player.elementKey ? ELEMENTS[player.elementKey].name : '-';
+    document.getElementById('spText').innerText = `${player.sp}`;
 }
 
 function draw() {
@@ -372,57 +450,69 @@ function draw() {
         shakeTime--;
     }
 
-    const reg = REGIONS[currentRegionIdx] || REGIONS[0];
-    const elem = gameStarted ? ELEMENTS[player.elementKey] : { color: '#fff', glow: '#fff' };
+    // 맵 배경
+    if (currentMap === 'town') {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, reg.bgColor[0]);
-    grad.addColorStop(1, reg.bgColor[1]);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // 건물들
+        townBuildings.forEach(b => {
+            ctx.fillStyle = b.color;
+            ctx.fillRect(b.x, 280, b.width, 160);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif';
+            ctx.fillText(b.name, b.x + 10, 265);
 
+            // 주점 상호작용 텍스트
+            if (b.type === 'tavern' && Math.abs(player.x - (b.x + 30)) < 50) {
+                ctx.fillStyle = '#ffeb3b';
+                ctx.fillText("[Q] 키를 눌러 주점 진입", b.x - 10, 240);
+            }
+        });
+    } else {
+        // 던전 배경 (슬라임 성지)
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#052014'); grad.addColorStop(1, '#02120b');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 귀환 포탈
+        ctx.fillStyle = '#00ffcc'; ctx.font = '12px sans-serif';
+        ctx.fillText("🌀 마을 귀환 [↑]", 20, 320);
+        ctx.strokeStyle = '#00ffcc'; ctx.strokeRect(20, 330, 50, 110);
+    }
+
+    // 바닥
     platforms.forEach(plat => {
-        ctx.fillStyle = reg.platColor;
-        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.fillRect(plat.x, plat.y, plat.width, 4);
+        ctx.fillStyle = '#111827'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+        ctx.fillStyle = '#00e5ff'; ctx.fillRect(plat.x, plat.y, plat.width, 3);
     });
 
-    portals.forEach(port => {
-        ctx.shadowBlur = 15; ctx.shadowColor = '#00e5ff';
-        ctx.fillStyle = 'rgba(0, 229, 255, 0.2)';
-        ctx.fillRect(port.x, port.y, port.width, port.height);
-        ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2;
-        ctx.strokeRect(port.x, port.y, port.width, port.height);
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#00e5ff'; ctx.font = '12px sans-serif';
-        ctx.fillText("포탈 [↑]", port.x + 8, port.y - 10);
-    });
-
+    // 슬라임 몬스터들
     monsters.forEach(m => {
-        ctx.fillStyle = m.frozen > 0 ? '#00ffff' : '#ff3366';
-        ctx.beginPath(); ctx.arc(m.x + m.width / 2, m.y + m.height / 2, m.width / 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = m.frozen > 0 ? '#00ffff' : '#00ff88';
+        ctx.shadowBlur = 12; ctx.shadowColor = '#00ff88';
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
 
-        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(m.x, m.y - 10, m.width, 5);
-        ctx.fillStyle = '#00ffcc'; ctx.fillRect(m.x, m.y - 10, (m.hp / m.maxHp) * m.width, 5);
+        // 체력바
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, m.radius * 2, 4);
+        ctx.fillStyle = '#ff0055';
+        ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, (m.hp / m.maxHp) * (m.radius * 2), 4);
     });
 
+    // 파티클
     particles.forEach(p => {
-        ctx.shadowBlur = 10; ctx.shadowColor = p.glow || p.color;
+        ctx.shadowBlur = 8; ctx.shadowColor = p.glow || p.color;
         ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
         ctx.shadowBlur = 0;
     });
 
-    if (gameStarted) {
+    // 졸라맨 캐릭터
+    if (player.elementKey) {
+        const elem = ELEMENTS[player.elementKey];
         const px = player.x + player.width / 2;
         const py = player.y;
-
-        if (player.rank >= 2) {
-            ctx.shadowBlur = 20; ctx.shadowColor = elem.glow;
-            ctx.strokeStyle = elem.color; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(px, py + 20, 28 + player.rank * 4, 0, Math.PI * 2); ctx.stroke();
-            ctx.shadowBlur = 0;
-        }
 
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
@@ -435,13 +525,13 @@ function draw() {
 
         if (player.isAttacking) {
             ctx.lineTo(px + (26 * dir), py + 18); ctx.stroke();
-            ctx.shadowBlur = 25; ctx.shadowColor = elem.glow; ctx.strokeStyle = elem.color; ctx.lineWidth = 5;
-            ctx.beginPath(); ctx.arc(px, py + 20, 45, player.facing === 'right' ? -0.8 : 2.2, player.facing === 'right' ? 0.8 : 4.0); ctx.stroke();
+            ctx.shadowBlur = 20; ctx.shadowColor = elem.glow; ctx.strokeStyle = elem.color; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(px, py + 20, 40, player.facing === 'right' ? -0.8 : 2.2, player.facing === 'right' ? 0.8 : 4.0); ctx.stroke();
             ctx.shadowBlur = 0;
         } else if (player.isSkill) {
             ctx.lineTo(px + (18 * dir), py + 10); ctx.stroke();
-            ctx.shadowBlur = 35; ctx.shadowColor = elem.glow; ctx.fillStyle = elem.color;
-            ctx.beginPath(); ctx.arc(px + (70 * dir), py + 20, 40, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 30; ctx.shadowColor = elem.glow; ctx.fillStyle = elem.color;
+            ctx.beginPath(); ctx.arc(px + (60 * dir), py + 20, 35, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
         } else {
             ctx.lineTo(px - 8, py + 28); ctx.stroke();
@@ -449,11 +539,11 @@ function draw() {
         }
     }
 
+    // 데미지 텍스트
     damageTexts.forEach(d => {
-        ctx.shadowBlur = 8; ctx.shadowColor = d.color; ctx.fillStyle = d.color;
-        ctx.font = 'bold 18px sans-serif'; ctx.globalAlpha = d.opacity;
-        ctx.fillText(d.text, d.x, d.y);
-        ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+        ctx.shadowBlur = 6; ctx.shadowColor = d.color; ctx.fillStyle = d.color;
+        ctx.font = 'bold 16px sans-serif'; ctx.globalAlpha = d.opacity;
+        ctx.fillText(d.text, d.x, d.y); ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
     });
 
     ctx.restore();
