@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 커스텀 CSS 스타일링
+# 커스텀 CSS 스타일링 (오타 수정: unsafe_allow_html)
 st.markdown("""
 <style>
     .main { background-color: #0b0e14; }
@@ -27,7 +27,7 @@ st.markdown("""
         color: #000000;
     }
 </style>
-""", unsafe_allow_allow_html=True)
+""", unsafe_allow_html=True)
 
 # 메인 타이틀
 st.title("⚔️ 졸라맨 원소 RPG (Stickman Elemental RPG)")
