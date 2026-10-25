@@ -619,3 +619,191 @@ function update() {
     platforms.forEach(plat => {
         if (player.x < plat.x + plat.width && player.x + player.width > plat.x &&
             player.y + player.height >= plat.y && player.y + player.height <= plat.y + 16 &&
+            player.vy >= 0) {
+            player.y = plat.y - player.height; player.vy = 0; player.isGrounded = true;
+        }
+    });
+
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+
+    // 🔥 슬라임 감지 & 플레이어 추적(Follow) AI
+    monsters.forEach(m => {
+        if (m.frozen > 0) {
+            m.frozen--;
+        } else {
+            const dist = Math.abs(player.x - m.x);
+            // 플레이어가 380px 이내로 접근 시 추적 모드 발동
+            if (dist < 380) {
+                m.isChasing = true;
+                m.vx = player.x > m.x ? m.speed : -m.speed;
+            } else {
+                m.isChasing = false;
+                if (m.vx === 0) m.vx = m.speed;
+            }
+            m.x += m.vx;
+            if (m.x < 120 || m.x > 890) m.vx *= -1;
+        }
+
+        // 피격 판정
+        if (Math.abs(player.x + player.width / 2 - m.x) < m.radius + 10 &&
+            Math.abs(player.y + player.height / 2 - m.y) < m.radius + 20) {
+            if (now - player.lastHitTime > 900) {
+                playerTakeDamage(m.atk);
+            }
+        }
+    });
+
+    particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy; p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    });
+
+    damageTexts.forEach((d, i) => {
+        d.y += d.vy; d.opacity -= 0.03;
+        if (d.opacity <= 0) damageTexts.splice(i, 1);
+    });
+
+    document.getElementById('hpText').innerText = `${Math.floor(player.hp)}/${player.maxHp}`;
+    document.getElementById('defText').innerText = `${Math.floor(player.shield)}/${player.maxShield}`;
+    document.getElementById('atkText').innerText = `${Math.floor(player.atk)}`;
+    document.getElementById('speedText').innerText = `${player.speedVal.toFixed(1)}`;
+    document.getElementById('goldText').innerText = `${player.gold}`;
+    document.getElementById('spText').innerText = `${player.sp}`;
+
+    const cdSec = Math.ceil(player.ultCooldown / 60);
+    document.getElementById('cdText').innerText = player.ultCooldown > 0 ? `${cdSec}s` : "READY";
+}
+
+function draw() {
+    ctx.save();
+    if (shakeTime > 0) {
+        ctx.translate((Math.random() - 0.5) * shakeIntensity, (Math.random() - 0.5) * shakeIntensity);
+        shakeTime--;
+    }
+
+    if (currentMap === 'town') {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        townBuildings.forEach(b => {
+            ctx.fillStyle = b.color; ctx.fillRect(b.x, 280, b.width, 160);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(b.name, b.x + 10, 265);
+            if (b.type === 'tavern' && Math.abs(player.x - (b.x + 30)) < 50) {
+                ctx.fillStyle = '#ffeb3b'; ctx.fillText("[Q] 키를 눌러 주점 진입", b.x - 10, 240);
+            }
+        });
+    } else {
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#1a0505'); grad.addColorStop(1, '#080202');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 마물 둥지 표시
+        ctx.fillStyle = 'rgba(255, 0, 85, 0.15)';
+        ctx.fillRect(spawnNest.x, spawnNest.y, spawnNest.width, spawnNest.height);
+        ctx.strokeStyle = '#ff0055'; ctx.lineWidth = 1;
+        ctx.strokeRect(spawnNest.x, spawnNest.y, spawnNest.width, spawnNest.height);
+        ctx.fillStyle = '#ff0055'; ctx.font = '11px sans-serif';
+        ctx.fillText("⚠️ 마물 둥지 (스폰 지역)", spawnNest.x + 5, spawnNest.y - 8);
+
+        ctx.fillStyle = '#00ffcc'; ctx.font = '12px sans-serif';
+        ctx.fillText("🌀 마을 귀환 [↑]", 20, 320);
+        ctx.strokeStyle = '#00ffcc'; ctx.strokeRect(20, 330, 50, 110);
+    }
+
+    platforms.forEach(plat => {
+        ctx.fillStyle = '#111827'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+        ctx.fillStyle = '#00e5ff'; ctx.fillRect(plat.x, plat.y, plat.width, 3);
+    });
+
+    // 슬라임 렌더링 (추적 중일 때 붉은 글로우)
+    monsters.forEach(m => {
+        ctx.fillStyle = m.frozen > 0 ? '#00ffff' : (m.isChasing ? '#ff0055' : '#00ff88');
+        ctx.shadowBlur = m.isChasing ? 18 : 10;
+        ctx.shadowColor = m.isChasing ? '#ff0055' : '#00ff88';
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // 분노한 눈동자 연출
+        if (m.isChasing) {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(m.x - 4, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(m.x + 4, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath(); ctx.arc(m.x - 4, m.y - 4, 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(m.x + 4, m.y - 4, 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, m.radius * 2, 4);
+        ctx.fillStyle = '#ff0055'; ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, (m.hp / m.maxHp) * (m.radius * 2), 4);
+    });
+
+    particles.forEach(p => {
+        ctx.shadowBlur = 8; ctx.shadowColor = p.glow || p.color;
+        ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.shadowBlur = 0;
+    });
+
+    // 졸라맨 및 필살기 연출
+    if (player.elementKey) {
+        const elem = ELEMENTS[player.elementKey];
+        const px = player.x + player.width / 2;
+        const py = player.y;
+
+        if (player.shield > 0) {
+            ctx.shadowBlur = 12; ctx.shadowColor = '#00e5ff';
+            ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py + 20, 26, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py + 18); ctx.lineTo(px, py + 34); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px - 8, py + 48); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px + 8, py + 48); ctx.stroke();
+
+        const dir = player.facing === 'right' ? 1 : -1;
+        ctx.beginPath(); ctx.moveTo(px, py + 22);
+
+        if (player.isUlt) {
+            // [C] 필살기 발동 네온 고리 연출
+            ctx.shadowBlur = 40; ctx.shadowColor = elem.glow;
+            ctx.strokeStyle = elem.color; ctx.lineWidth = 8;
+            ctx.beginPath(); ctx.arc(px, py + 20, 70, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0;
+        } else if (player.isAttacking) {
+            ctx.lineTo(px + (26 * dir), py + 18); ctx.stroke();
+            ctx.shadowBlur = 20; ctx.shadowColor = elem.glow; ctx.strokeStyle = elem.color; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(px, py + 20, 40, player.facing === 'right' ? -0.8 : 2.2, player.facing === 'right' ? 0.8 : 4.0); ctx.stroke();
+            ctx.shadowBlur = 0;
+        } else if (player.isSkill) {
+            ctx.lineTo(px + (18 * dir), py + 10); ctx.stroke();
+            ctx.shadowBlur = 30; ctx.shadowColor = elem.glow; ctx.fillStyle = elem.color;
+            ctx.beginPath(); ctx.arc(px + (60 * dir), py + 20, 35, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        } else {
+            ctx.lineTo(px - 8, py + 28); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(px, py + 22); ctx.lineTo(px + 8, py + 28); ctx.stroke();
+        }
+    }
+
+    damageTexts.forEach(d => {
+        ctx.shadowBlur = 6; ctx.shadowColor = d.color; ctx.fillStyle = d.color;
+        ctx.font = 'bold 16px sans-serif'; ctx.globalAlpha = d.opacity;
+        ctx.fillText(d.text, d.x, d.y); ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+    });
+
+    ctx.restore();
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
+</body>
+</html>
