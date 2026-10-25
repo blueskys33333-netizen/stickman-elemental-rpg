@@ -5,27 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>졸라맨 원소 RPG - 캐릭터 버그 수정완료</title>
     <style>
-        body { 
-            margin: 0; padding: 0; 
-            background-color: #050811; color: #fff; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        body {
+            margin: 0; padding: 0;
+            background-color: #050811; color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             min-height: 100vh; overflow: hidden; user-select: none;
         }
-        #gameContainer { 
-            position: relative; 
-            box-shadow: 0 0 35px rgba(0, 229, 255, 0.25); 
-            border-radius: 12px; overflow: hidden; 
-            border: 2px solid #1a233a; 
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 0 35px rgba(0, 229, 255, 0.25);
+            border-radius: 12px; overflow: hidden;
+            border: 2px solid #1a233a;
         }
         canvas { background: #000; display: block; cursor: pointer; }
-        
-        #uiOverlay { 
-            position: absolute; top: 15px; left: 15px; 
-            pointer-events: none; 
-            background: rgba(8, 12, 20, 0.92); 
-            padding: 12px 18px; border-radius: 10px; 
-            border: 1px solid #00e5ff; font-size: 13px; line-height: 1.6; 
+
+        #uiOverlay {
+            position: absolute; top: 15px; left: 15px;
+            pointer-events: none;
+            background: rgba(8, 12, 20, 0.92);
+            padding: 12px 18px; border-radius: 10px;
+            border: 1px solid #00e5ff; font-size: 13px; line-height: 1.6;
         }
         #questBox {
             position: absolute; top: 15px; right: 15px;
@@ -70,12 +70,12 @@
             padding: 8px; width: 115px; text-align: center; cursor: pointer;
             transition: all 0.2s; font-size: 11px; color: #556677; opacity: 0.35; filter: grayscale(100%);
         }
-        .node-btn.unlocked { 
-            border-color: #00e5ff; color: #00e5ff; background: #0b2530; 
+        .node-btn.unlocked {
+            border-color: #00e5ff; color: #00e5ff; background: #0b2530;
             opacity: 1.0; filter: none; box-shadow: 0 0 10px rgba(0,229,255,0.3);
         }
-        .node-btn.active-skill { 
-            border-color: #ffeb3b; background: #3d3408; color: #ffeb3b; 
+        .node-btn.active-skill {
+            border-color: #ffeb3b; background: #3d3408; color: #ffeb3b;
             box-shadow: 0 0 15px #ffeb3b; opacity: 1.0; filter: none;
         }
 
@@ -102,8 +102,11 @@
         #inventoryModal { width: 600px; max-height: 440px; overflow-y: auto; }
         .inventory-section { text-align: left; margin: 12px 0; }
         .inventory-section h3 { color: #00e5ff; border-bottom: 1px solid #233148; padding-bottom: 6px; }
-        .inventory-item { display: flex; justify-content: space-between; align-items: center; gap: 8px;
-            background: #121a2e; border: 1px solid #233148; border-radius: 8px; padding: 8px 10px; margin: 5px 0; }
+        .inventory-item {
+            display: flex; justify-content: space-between; align-items: center; gap: 8px;
+            background: #121a2e; border: 1px solid #233148; border-radius: 8px;
+            padding: 8px 10px; margin: 5px 0;
+        }
         .inventory-item small { color: #a0b2ce; }
         #notifyBox {
             position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
@@ -232,7 +235,6 @@
     <div id="skillModal" class="modal">
         <h2>📈 스킬 숙련도 트리</h2>
         <p style="font-size:11px; color:#88a;">현재 총 숙련도: <strong id="masteryText" style="color:#00e5ff;">0 / 5,000 Exp</strong></p>
-        
         <div class="tree-container">
             <div class="tree-row">
                 <button class="node-btn" id="node-t1" onclick="equipSkill('t1')">
@@ -250,13 +252,12 @@
                 <button class="node-btn" id="node-t3_def" onclick="equipSkill('def')"><strong>🛡️ 방어</strong><br>절대 반사 결계<br><small style="font-size:9px;">(숙련도 5,000)</small></button>
             </div>
         </div>
-
         <p style="font-size:12px; color:#00ffcc;">장착된 [C] 필살기: <strong id="equippedSkillText">1단계 원소 해방파</strong></p>
         <button class="modal-btn" onclick="closeModals()">닫기</button>
     </div>
 
     <canvas id="gameCanvas" width="960" height="520"></canvas>
-    
+
     <div id="uiOverlay">
         <div><strong>❤️ 피 (HP):</strong> <span id="hpText" class="stat-val">100/100</span> | <strong>🛡️ 방어막:</strong> <span id="defText" class="stat-val" style="color:#00e5ff;">50/50</span></div>
         <div><strong>⚔️ 공격력:</strong> <span id="atkText" class="stat-val">15</span> | <strong>🗡️ 무기:</strong> <span id="weaponText" class="stat-val" style="color:#ffeb3b;">맨손</span></div>
@@ -269,6 +270,7 @@
         <button class="ui-btn" onclick="openStatModal()">📊 스탯 [U]</button>
         <button class="ui-btn" onclick="openSkillModal()">📈 스킬 트리 [K]</button>
         <button class="ui-btn" onclick="openInventoryModal()">🎒 인벤토리 [I]</button>
+        <button class="ui-btn" id="summonKingBtn" onclick="summonSlimeKing()" style="display:none; border-color:#ffeb3b; color:#ffeb3b;">👑 슬라임 킹 소환</button>
     </div>
 
     <div id="questBox">📜 퀘스트: <span id="questText">주점에 가서 퀘스트를 수락하세요!</span></div>
@@ -289,33 +291,27 @@ const ELEMENTS = {
 const player = {
     x: 120, y: 390, width: 24, height: 48, vx: 0, vy: 0,
     isGrounded: true, facing: 'right',
-    
     stats: { speed: 1, power: 1, heal: 1, def: 1, hp: 1 },
     weapon: { name: "맨손", bonusAtk: 0, enhanceLv: 0 },
     armor: { name: "기본 옷", defense: 0 },
-
     masteryExp: 0,
     equippedSkill: 't1',
     ultCooldown: 0,
-    maxUltCooldown: 900,
-
+        maxUltCooldown: 900,
     hp: 100, maxHp: 100,
     shield: 50, maxShield: 50,
     atk: 15, speedVal: 5.0, dodgeRate: 0.05,
     gold: 0, sp: 0,
-
     lastHitTime: 0,
-    elementKey: 'fire', // 기본값 불로 설정하여 처음부터 항상 그려지도록 보장
+    elementKey: 'fire',
     isAttacking: false, attackTimer: 0, isSkill: false, skillTimer: 0, isUlt: false, ultTimer: 0
 };
 
 let currentMap = 'town';
 let activeQuest = null;
 
-// 동일 장비는 한 칸에 수량으로 쌓이며, 장착 장비는 인벤토리에서 관리합니다.
 const weaponInventory = [];
 const armorInventory = [];
-// 기본 무기도 인벤토리에 등록합니다.
 armorInventory.push({ name: '기본 옷', defense: 0, count: 1 });
 weaponInventory.push({ name: '맨손', bonusAtk: 0, enhanceLv: 0, count: 1 });
 
@@ -407,7 +403,7 @@ const spawnNest = { x: 750, y: 380, width: 120, height: 60 };
 let monsters = [];
 let treasureBoxes = [];
 let particles = [];
-let skillVisuals = []; 
+let skillVisuals = [];
 let damageTexts = [];
 let shakeTime = 0, shakeIntensity = 0;
 
@@ -429,15 +425,15 @@ function recalculateStats() {
 function selectElement(elemKey) {
     player.elementKey = elemKey;
     document.getElementById('charSelectScreen').style.display = 'none';
-    
+
     player.x = 120;
     player.y = 390;
     player.vx = 0; player.vy = 0;
 
     recalculateStats();
-    player.hp = player.maxHp; 
+    player.hp = player.maxHp;
     player.shield = player.maxShield;
-    
+
     showNotify(`🎉 ${ELEMENTS[elemKey].name} 속성을 선택했습니다! 주점으로 이동하세요.`);
 }
 
@@ -636,6 +632,26 @@ function updateQuestUI() {
     qBox.innerText = !activeQuest ? "주점에 가서 새로운 퀘스트를 받으세요!" : `${activeQuest.title} (${activeQuest.current}/${activeQuest.target})`;
 }
 
+function summonSlimeKing() {
+    if (currentMap !== 'dungeon') {
+        showNotify("⚠️ 먼저 퀘스트를 수락하고 마물 둥지로 들어가세요!");
+        return;
+    }
+    if (monsters.some(m => m.isSlimeKing)) {
+        showNotify("👑 슬라임 킹이 이미 전투 중입니다!");
+        return;
+    }
+    const kingX = player.x < canvas.width / 2 ? 790 : 170;
+    monsters.push({
+        x: kingX, y: 390, radius: 48, hp: 2500, maxHp: 2500,
+        atk: 35, speed: 1.15, vx: 0, isChasing: false,
+        name: "👑 슬라임 킹", frozen: 0, isBoss: true, isSlimeKing: true,
+        skillTimer: 180, warningCircle: null
+    });
+    showNotify("👑 슬라임 킹 등장! 조심해! HP 2500");
+    triggerShake(14, 9);
+}
+
 function spawnSlimes() {
     monsters = [];
     treasureBoxes = [];
@@ -646,7 +662,6 @@ function spawnSlimes() {
     ];
 
     for (let i = 0; i < 5; i++) {
-        // 첫 번째 몬스터만 보스로 생성하고 나머지는 일반 몬스터로 구성합니다.
         const t = i === 0 ? types[0] : types[i % 2 === 1 ? 1 : 2];
         monsters.push({
             x: spawnNest.x + (Math.random() * 80 - 40),
@@ -669,7 +684,7 @@ window.addEventListener('keydown', e => {
     if (e.key === 'u' || e.key === 'U') openStatModal();
     if (e.key === 'k' || e.key === 'K') openSkillModal();
     if (e.key === 'i' || e.key === 'I') openInventoryModal();
-    
+
     if (e.key === 'f' || e.key === 'F') { openNearbyTreasureBox(); }
 
     if ((e.key === 'c' || e.key === 'C') && currentMap === 'dungeon') {
@@ -718,7 +733,6 @@ function createImpactParticles(x, y, elemData, count = 15) {
 }
 
 function playerTakeDamage(damage) {
-    // 장착 방어구가 피해를 줄입니다. 모든 공격은 최소 1 피해를 줍니다.
     damage = Math.max(1, damage - (player.armor?.defense || 0));
 
     if (Math.random() < player.dodgeRate) {
@@ -784,7 +798,6 @@ function useUltimateSkill() {
     }
 
     const dmg = player.atk * ultMultiplier * elem.dmgBonus;
-    // 역순 순회로 배열에서 몬스터를 제거할 때 다음 대상이 건너뛰어지는 문제를 방지합니다.
     for (let idx = monsters.length - 1; idx >= 0; idx--) {
         const m = monsters[idx];
         m.hp -= dmg;
@@ -819,7 +832,6 @@ function attackHit(range, isSkill = false) {
         height: player.height + 20
     };
 
-    // 역순 순회로 여러 몬스터를 동시에 처치해도 누락되지 않게 합니다.
     for (let idx = monsters.length - 1; idx >= 0; idx--) {
         const m = monsters[idx];
         if (hitBox.x < m.x + m.radius && hitBox.x + hitBox.width > m.x - m.radius &&
@@ -833,9 +845,11 @@ function attackHit(range, isSkill = false) {
 
             if (m.hp <= 0) {
                 if (Math.random() < 0.40) treasureBoxes.push({ x: m.x, y: 410 });
+                const defeatedKing = !!m.isSlimeKing;
                 monsters.splice(idx, 1);
-                player.gold += 40;
-                if (activeQuest && activeQuest.current < activeQuest.target) {
+                player.gold += defeatedKing ? 2500 : 40;
+                if (defeatedKing) showNotify("🏆 슬라임 킹 처치 성공! 보상 2500 골드!");
+                if (activeQuest && activeQuest.current < activeQuest.target && !defeatedKing) {
                     activeQuest.current++;
                     updateQuestUI();
                     if (activeQuest.current >= activeQuest.target) showNotify("🎉 퀘스트 목표 달성!");
@@ -851,6 +865,8 @@ function update() {
     const modalOpen = Array.from(document.querySelectorAll('.modal'))
         .some(modal => getComputedStyle(modal).display !== 'none');
     if ((selectScreen && getComputedStyle(selectScreen).display !== 'none') || modalOpen) return;
+    const kingButton = document.getElementById('summonKingBtn');
+    if (kingButton) kingButton.style.display = currentMap === 'dungeon' ? 'inline-block' : 'none';
 
     if (player.ultCooldown > 0) player.ultCooldown--;
 
@@ -874,7 +890,6 @@ function update() {
             showNotify("🏡 [마을] 복귀!"); keys['ArrowUp'] = false;
         }
     }
-
     if ((keys['z'] || keys['Z']) && !player.isAttacking && !player.isSkill && !player.isUlt) {
         player.isAttacking = true; player.attackTimer = 10; attackHit(60, false);
     }
@@ -991,7 +1006,7 @@ function draw() {
         townBuildings.forEach(b => {
             ctx.fillStyle = b.color; ctx.fillRect(b.x, 280, b.width, 160);
             ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.fillText(b.name, b.x + 10, 265);
-            
+
             if (b.type === 'tavern' && Math.abs(player.x - (b.x + 30)) < 50) {
                 ctx.fillStyle = '#ffeb3b'; ctx.fillText("[Q] 주점 진입", b.x - 5, 240);
             }
@@ -1045,13 +1060,30 @@ function draw() {
     });
 
     monsters.forEach(m => {
-        ctx.fillStyle = m.frozen > 0 ? '#00ffff' : (m.isBoss ? '#ff3300' : (m.isChasing ? '#ff0055' : '#00ff88'));
-        ctx.shadowBlur = m.isChasing ? 18 : 10;
-        ctx.shadowColor = m.isBoss ? '#ff3300' : '#00ff88';
-        ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = m.frozen > 0 ? '#00ffff' : (m.isSlimeKing ? '#7b2cff' : (m.isBoss ? '#ff3300' : (m.isChasing ? '#ff0055' : '#00ff88')));
+        ctx.shadowBlur = m.isSlimeKing ? 24 : (m.isChasing ? 18 : 10);
+        ctx.shadowColor = m.isSlimeKing ? '#d6a6ff' : (m.isBoss ? '#ff3300' : '#00ff88');
+        ctx.beginPath(); ctx.ellipse(m.x, m.y, m.radius, m.radius * 0.82, 0, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
 
-        if (m.isChasing) {
+        if (m.isSlimeKing) {
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.moveTo(m.x - 30, m.y - 30); ctx.lineTo(m.x - 25, m.y - 52);
+            ctx.lineTo(m.x - 10, m.y - 38); ctx.lineTo(m.x, m.y - 58);
+            ctx.lineTo(m.x + 12, m.y - 38); ctx.lineTo(m.x + 28, m.y - 52);
+            ctx.lineTo(m.x + 31, m.y - 30); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.ellipse(m.x - 14, m.y - 5, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(m.x + 14, m.y - 5, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#26113d';
+            ctx.beginPath(); ctx.arc(m.x - 14, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(m.x + 14, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(m.x, m.y + 9, 11, 0.15, Math.PI - 0.15); ctx.stroke();
+            ctx.fillStyle = '#ffd700'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText('SLIME KING', m.x, m.y - 66); ctx.textAlign = 'left';
+        } else if (m.isChasing) {
             ctx.fillStyle = '#ffffff';
             ctx.beginPath(); ctx.arc(m.x - 4, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
             ctx.beginPath(); ctx.arc(m.x + 4, m.y - 4, 3, 0, Math.PI * 2); ctx.fill();
@@ -1082,7 +1114,6 @@ function draw() {
         ctx.shadowBlur = 0;
     });
 
-    // 졸라맨 캐릭터 항상 렌더링하도록 보장
     const elem = ELEMENTS[player.elementKey] || { color: "#ffffff", glow: "#ffffff" };
     const px = player.x + player.width / 2;
     const py = player.y;
@@ -1094,7 +1125,6 @@ function draw() {
         ctx.shadowBlur = 0;
     }
 
-    // 졸라맨 몸체 그리기 (항상 흰색 선으로 또렷하게 표시)
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(px, py + 18); ctx.lineTo(px, py + 34); ctx.stroke();
@@ -1124,7 +1154,6 @@ function draw() {
         ctx.beginPath(); ctx.moveTo(px, py + 22); ctx.lineTo(px + 8, py + 28); ctx.stroke();
     }
 
-    // 장착한 무기를 졸라맨 손에 그립니다. 공격 중에는 무기가 함께 휘둘러집니다.
     const weaponName = player.weapon && player.weapon.name ? player.weapon.name : '맨손';
     if (!weaponName.includes('맨손')) {
         const handX = px + 9 * dir;
@@ -1137,7 +1166,6 @@ function draw() {
         ctx.lineJoin = 'round';
 
         if (weaponName.includes('몽둥이')) {
-            // 나무 몽둥이: 두꺼운 나무 몸통과 손잡이
             ctx.strokeStyle = '#4a2814'; ctx.lineWidth = 9;
             ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(34, -31); ctx.stroke();
             ctx.strokeStyle = '#b8793d'; ctx.lineWidth = 6;
@@ -1145,7 +1173,6 @@ function draw() {
             ctx.strokeStyle = '#e3b06b'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(22, -20); ctx.lineTo(28, -25); ctx.stroke();
         } else if (weaponName.includes('목검')) {
-            // 목검: 갈색 목재 칼날과 가드
             ctx.strokeStyle = '#5a3218'; ctx.lineWidth = 7;
             ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(38, -36); ctx.stroke();
             ctx.strokeStyle = '#d5a15e'; ctx.lineWidth = 4;
@@ -1155,7 +1182,6 @@ function draw() {
             ctx.strokeStyle = '#e7c58a'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(-2, 4); ctx.lineTo(5, -3); ctx.stroke();
         } else if (weaponName.includes('원소검')) {
-            // 전설의 원소검: 청록색 빛이 나는 마법검
             ctx.shadowBlur = 18; ctx.shadowColor = '#00ffff';
             ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 10;
             ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(42, -42); ctx.stroke();
@@ -1166,7 +1192,6 @@ function draw() {
             ctx.fillStyle = '#fff59d'; ctx.beginPath(); ctx.arc(43, -43, 4, 0, Math.PI * 2); ctx.fill();
             ctx.shadowBlur = 0;
         } else {
-            // 쇠검 및 기타 검: 은색 칼날, 어두운 날 테두리, 가드와 손잡이
             ctx.shadowBlur = 8; ctx.shadowColor = '#c9f3ff';
             ctx.strokeStyle = '#263746'; ctx.lineWidth = 9;
             ctx.beginPath(); ctx.moveTo(1, 1); ctx.lineTo(40, -39); ctx.stroke();
