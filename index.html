@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>졸라맨 원소 RPG - 완성본</title>
+    <title>졸라맨 원소 RPG - 캐릭터 버그 수정완료</title>
     <style>
         body { 
             margin: 0; padding: 0; 
@@ -79,16 +79,10 @@
             box-shadow: 0 0 15px #ffeb3b; opacity: 1.0; filter: none;
         }
 
-        .stat-row {
+        .stat-row, .shop-item {
             display: flex; justify-content: space-between; align-items: center;
             background: #121a2e; padding: 8px 14px; border-radius: 8px; margin-bottom: 6px;
             border: 1px solid #233148;
-        }
-
-        .shop-item {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #121a2e; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px;
-            border: 1px solid #25334d;
         }
 
         #charSelectScreen {
@@ -251,11 +245,10 @@ const ELEMENTS = {
 };
 
 const player = {
-    x: 120, y: 350, width: 24, height: 48, vx: 0, vy: 0,
-    isGrounded: false, facing: 'right',
+    x: 120, y: 390, width: 24, height: 48, vx: 0, vy: 0,
+    isGrounded: true, facing: 'right',
     
     stats: { speed: 1, power: 1, heal: 1, def: 1, hp: 1 },
-
     weapon: { name: "맨손", bonusAtk: 0, enhanceLv: 0 },
 
     masteryExp: 0,
@@ -269,7 +262,8 @@ const player = {
     gold: 0, sp: 0,
 
     lastHitTime: 0,
-    elementKey: null, isAttacking: false, attackTimer: 0, isSkill: false, skillTimer: 0, isUlt: false, ultTimer: 0
+    elementKey: 'fire', // 기본값 불로 설정하여 처음부터 항상 그려지도록 보장
+    isAttacking: false, attackTimer: 0, isSkill: false, skillTimer: 0, isUlt: false, ultTimer: 0
 };
 
 let currentMap = 'town';
@@ -311,11 +305,9 @@ function selectElement(elemKey) {
     player.elementKey = elemKey;
     document.getElementById('charSelectScreen').style.display = 'none';
     
-    // 캐릭터 좌표 강제 초기화 (화면에 즉시 보이도록 설정)
     player.x = 120;
-    player.y = 350;
-    player.vx = 0;
-    player.vy = 0;
+    player.y = 390;
+    player.vx = 0; player.vy = 0;
 
     recalculateStats();
     player.hp = player.maxHp; 
@@ -617,7 +609,7 @@ function useUltimateSkill() {
     player.isUlt = true; player.ultTimer = 40;
     triggerShake(24, 18);
 
-    const elem = ELEMENTS[player.elementKey];
+    const elem = ELEMENTS[player.elementKey] || ELEMENTS.fire;
     let px = player.x + player.width / 2;
 
     if (player.elementKey === 'fire') {
@@ -663,8 +655,7 @@ function useUltimateSkill() {
 }
 
 function attackHit(range, isSkill = false) {
-    if (!player.elementKey) return;
-    const elem = ELEMENTS[player.elementKey];
+    const elem = ELEMENTS[player.elementKey] || ELEMENTS.fire;
     let dmg = (isSkill ? player.atk * 3.0 : player.atk) * elem.dmgBonus;
 
     triggerShake(isSkill ? 10 : 5, isSkill ? 7 : 3);
@@ -703,8 +694,6 @@ function attackHit(range, isSkill = false) {
 }
 
 function update() {
-    if (!player.elementKey) return;
-
     if (player.ultCooldown > 0) player.ultCooldown--;
 
     if (keys['ArrowLeft']) { player.vx = -player.speedVal; player.facing = 'left'; }
@@ -935,47 +924,46 @@ function draw() {
         ctx.shadowBlur = 0;
     });
 
-    // 졸라맨 캐릭터 렌더링
-    if (player.elementKey) {
-        const elem = ELEMENTS[player.elementKey];
-        const px = player.x + player.width / 2;
-        const py = player.y;
+    // 졸라맨 캐릭터 항상 렌더링하도록 보장
+    const elem = ELEMENTS[player.elementKey] || { color: "#ffffff", glow: "#ffffff" };
+    const px = player.x + player.width / 2;
+    const py = player.y;
 
-        if (player.shield > 0) {
-            ctx.shadowBlur = 12; ctx.shadowColor = '#00e5ff';
-            ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(px, py + 20, 26, 0, Math.PI * 2); ctx.stroke();
-            ctx.shadowBlur = 0;
-        }
+    if (player.shield > 0) {
+        ctx.shadowBlur = 12; ctx.shadowColor = '#00e5ff';
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(px, py + 20, 26, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
 
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(px, py + 18); ctx.lineTo(px, py + 34); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px - 8, py + 48); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px + 8, py + 48); ctx.stroke();
+    // 졸라맨 몸체 그리기 (항상 흰색 선으로 또렷하게 표시)
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 18); ctx.lineTo(px, py + 34); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px - 8, py + 48); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py + 34); ctx.lineTo(px + 8, py + 48); ctx.stroke();
 
-        const dir = player.facing === 'right' ? 1 : -1;
-        ctx.beginPath(); ctx.moveTo(px, py + 22);
+    const dir = player.facing === 'right' ? 1 : -1;
+    ctx.beginPath(); ctx.moveTo(px, py + 22);
 
-        if (player.isUlt) {
-            ctx.shadowBlur = 40; ctx.shadowColor = elem.glow;
-            ctx.strokeStyle = elem.color; ctx.lineWidth = 8;
-            ctx.beginPath(); ctx.arc(px, py + 20, 70, 0, Math.PI * 2); ctx.stroke();
-            ctx.shadowBlur = 0;
-        } else if (player.isAttacking) {
-            ctx.lineTo(px + (26 * dir), py + 18); ctx.stroke();
-            ctx.shadowBlur = 20; ctx.shadowColor = elem.glow; ctx.strokeStyle = elem.color; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(px, py + 20, 40, player.facing === 'right' ? -0.8 : 2.2, player.facing === 'right' ? 0.8 : 4.0); ctx.stroke();
-            ctx.shadowBlur = 0;
-        } else if (player.isSkill) {
-            ctx.lineTo(px + (18 * dir), py + 10); ctx.stroke();
-            ctx.shadowBlur = 30; ctx.shadowColor = elem.glow; ctx.fillStyle = elem.color;
-            ctx.beginPath(); ctx.arc(px + (60 * dir), py + 20, 35, 0, Math.PI * 2); ctx.fill();
-            ctx.shadowBlur = 0;
-        } else {
-            ctx.lineTo(px - 8, py + 28); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(px, py + 22); ctx.lineTo(px + 8, py + 28); ctx.stroke();
-        }
+    if (player.isUlt) {
+        ctx.shadowBlur = 40; ctx.shadowColor = elem.glow;
+        ctx.strokeStyle = elem.color; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(px, py + 20, 70, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+    } else if (player.isAttacking) {
+        ctx.lineTo(px + (26 * dir), py + 18); ctx.stroke();
+        ctx.shadowBlur = 20; ctx.shadowColor = elem.glow; ctx.strokeStyle = elem.color; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(px, py + 20, 40, player.facing === 'right' ? -0.8 : 2.2, player.facing === 'right' ? 0.8 : 4.0); ctx.stroke();
+        ctx.shadowBlur = 0;
+    } else if (player.isSkill) {
+        ctx.lineTo(px + (18 * dir), py + 10); ctx.stroke();
+        ctx.shadowBlur = 30; ctx.shadowColor = elem.glow; ctx.fillStyle = elem.color;
+        ctx.beginPath(); ctx.arc(px + (60 * dir), py + 20, 35, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+    } else {
+        ctx.lineTo(px - 8, py + 28); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py + 22); ctx.lineTo(px + 8, py + 28); ctx.stroke();
     }
 
     damageTexts.forEach(d => {
