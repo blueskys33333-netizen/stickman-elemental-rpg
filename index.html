@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>졸라맨 원소 RPG - 마을 & 무기 상점</title>
+    <title>졸라맨 원소 RPG - 완성본</title>
     <style>
         body { 
             margin: 0; padding: 0; 
@@ -62,7 +62,6 @@
         }
         .modal-btn:hover { background: #00ffcc; color: #000; }
 
-        /* 스킬 트리 전용 스타일 */
         #skillModal { width: 580px; }
         .tree-container { display: flex; flex-direction: column; align-items: center; gap: 15px; margin: 15px 0; }
         .tree-row { display: flex; justify-content: center; gap: 15px; width: 100%; }
@@ -160,7 +159,7 @@
     <!-- 상점 모달 -->
     <div id="shopModal" class="modal" style="width:460px;">
         <h2>🛒 무기 상점</h2>
-        <p style="font-size:12px; color:#a0b2ce; margin-bottom:12px;">골드를 지급하고 무기를 즉시 구매하여 장착할 수 있습니다.</p>
+        <p style="font-size:12px; color:#a0b2ce; margin-bottom:12px;">골드를 지불하고 무기를 즉시 구매하여 장착할 수 있습니다.</p>
         <div style="text-align:left;">
             <div class="shop-item">
                 <span>🪵 <strong>나무 몽둥이</strong> <small style="color:#ffeb3b;">(공격력 +5)</small></span>
@@ -312,9 +311,12 @@ function selectElement(elemKey) {
     player.elementKey = elemKey;
     document.getElementById('charSelectScreen').style.display = 'none';
     
-    // 캐릭터 초기 위치 설정 및 스탯 초기화
+    // 캐릭터 좌표 강제 초기화 (화면에 즉시 보이도록 설정)
     player.x = 120;
     player.y = 350;
+    player.vx = 0;
+    player.vy = 0;
+
     recalculateStats();
     player.hp = player.maxHp; 
     player.shield = player.maxShield;
