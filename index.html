@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>졸라맨 원소 RPG - 마을 & 슬라임 성지</title>
+    <title>졸라맨 원소 RPG - 스탯 & 방어막 시스템</title>
     <style>
         body { 
             margin: 0; padding: 0; 
@@ -23,9 +23,9 @@
         #uiOverlay { 
             position: absolute; top: 15px; left: 15px; 
             pointer-events: none; 
-            background: rgba(8, 12, 20, 0.88); 
+            background: rgba(8, 12, 20, 0.92); 
             padding: 12px 18px; border-radius: 10px; 
-            border: 1px solid #00e5ff; font-size: 13px; line-height: 1.5; 
+            border: 1px solid #00e5ff; font-size: 13px; line-height: 1.6; 
         }
         #questBox {
             position: absolute; top: 15px; right: 15px;
@@ -36,21 +36,35 @@
         }
         .stat-val { color: #00ffcc; font-weight: bold; }
 
-        /* 모달 팝업 (주점 / 대장간 / 상점 UI) */
+        /* 스탯 투자 UI 모달 */
+        #statBtn {
+            position: absolute; bottom: 15px; left: 15px;
+            background: #18253a; color: #ffeb3b; border: 1px solid #ffeb3b;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold;
+            z-index: 10; transition: all 0.2s;
+        }
+        #statBtn:hover { background: #ffeb3b; color: #000; }
+
         .modal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(10, 15, 26, 0.96); border: 2px solid #00e5ff;
-            border-radius: 12px; padding: 20px; width: 420px; text-align: center;
+            border-radius: 12px; padding: 20px; width: 440px; text-align: center;
             display: none; z-index: 30; box-shadow: 0 0 30px rgba(0, 229, 255, 0.5);
         }
         .modal h2 { margin-top: 0; color: #ffeb3b; font-size: 20px; }
         .modal p { font-size: 13px; color: #a0b2ce; line-height: 1.5; }
         .modal-btn {
             background: #18253a; color: #00ffcc; border: 1px solid #00ffcc;
-            padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;
-            margin: 6px; transition: all 0.2s;
+            padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            margin: 4px; transition: all 0.2s; font-size: 12px;
         }
         .modal-btn:hover { background: #00ffcc; color: #000; }
+
+        .stat-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #121a2e; padding: 8px 14px; border-radius: 8px; margin-bottom: 6px;
+            border: 1px solid #233148;
+        }
 
         /* 캐릭터 생성 화면 */
         #charSelectScreen {
@@ -78,7 +92,7 @@
 <body>
 
 <div id="gameContainer">
-    <!-- 1. 시작 속성 선택 화면 -->
+    <!-- 시작 속성 선택 화면 -->
     <div id="charSelectScreen">
         <div class="select-title">✨ 주력 원소를 선택하세요</div>
         <div class="elem-cards">
@@ -101,7 +115,7 @@
         </div>
     </div>
 
-    <!-- 2. 주점 퀘스트 모달 -->
+    <!-- 주점 퀘스트 모달 -->
     <div id="tavernModal" class="modal">
         <h2>🍺 평화로운 주점 게시판</h2>
         <p id="tavernDesc">주점 주인이 새로운 의뢰를 건넸습니다.</p>
@@ -109,23 +123,44 @@
         <button class="modal-btn" onclick="closeModals()" style="border-color:#ff0055; color:#ff0055;">닫기</button>
     </div>
 
-    <!-- 3. 대장간/상점 모달 -->
-    <div id="shopModal" class="modal">
-        <h2 id="shopTitle">🔨 대장간</h2>
-        <p id="shopDesc">골드를 사용해 공격력을 강화할 수 있습니다.</p>
-        <button class="modal-btn" onclick="upgradeAtk()">공격력 강화 (+5 ATK / 200 Gold)</button>
-        <button class="modal-btn" onclick="closeModals()">나가기</button>
+    <!-- 스탯 강화 모달 -->
+    <div id="statModal" class="modal">
+        <h2>📊 스탯 투자 (보유 SP: <span id="modalSp" style="color:#ffeb3b;">0</span>)</h2>
+        <div style="text-align:left; margin-bottom:12px;">
+            <div class="stat-row">
+                <span>⚡ <strong>스피드 (Speed):</strong> Lv.<span id="statSpeedLv">1</span> <small style="color:#88a;">(이동속도/회피율)</small></span>
+                <button class="modal-btn" onclick="addStat('speed')">+1 SP</button>
+            </div>
+            <div class="stat-row">
+                <span>⚔️ <strong>힘 (Power):</strong> Lv.<span id="statPowerLv">1</span> <small style="color:#88a;">(공격력 증가)</small></span>
+                <button class="modal-btn" onclick="addStat('power')">+1 SP</button>
+            </div>
+            <div class="stat-row">
+                <span>💖 <strong>치유 (Healing):</strong> Lv.<span id="statHealLv">1</span> <small style="color:#88a;">(자동 회복 속도)</small></span>
+                <button class="modal-btn" onclick="addStat('heal')">+1 SP</button>
+            </div>
+            <div class="stat-row">
+                <span>🛡️ <strong>방어 (Defense):</strong> Lv.<span id="statDefLv">1</span> <small style="color:#88a;">(방어막 최대치)</small></span>
+                <button class="modal-btn" onclick="addStat('def')">+1 SP</button>
+            </div>
+            <div class="stat-row">
+                <span>❤️ <strong>피 (HP):</strong> Lv.<span id="statHpLv">1</span> <small style="color:#88a;">(최대 체력)</small></span>
+                <button class="modal-btn" onclick="addStat('hp')">+1 SP</button>
+            </div>
+        </div>
+        <button class="modal-btn" onclick="closeModals()">닫기</button>
     </div>
 
     <canvas id="gameCanvas" width="960" height="520"></canvas>
     
     <div id="uiOverlay">
-        <div><strong>👑 등급:</strong> <span id="rankText" class="stat-val">1등급</span></div>
-        <div><strong>❤️ HP:</strong> <span id="hpText" class="stat-val">100/100</span></div>
-        <div><strong>⚔️ 공격력:</strong> <span id="atkText" class="stat-val">15</span> | <strong>💰 골드:</strong> <span id="goldText" class="stat-val" style="color:#ffeb3b;">0</span></div>
-        <div><strong>✨ 속성:</strong> <span id="elemText" class="stat-val">-</span> | <strong>🌟 SP:</strong> <span id="spText" class="stat-val" style="color:#ffeb3b;">0</span></div>
+        <div><strong>❤️ 피 (HP):</strong> <span id="hpText" class="stat-val">100/100</span> | <strong>🛡️ 방어막:</strong> <span id="defText" class="stat-val" style="color:#00e5ff;">50/50</span></div>
+        <div><strong>⚔️ 힘 (공격력):</strong> <span id="atkText" class="stat-val">15</span> | <strong>⚡ 스피드:</strong> <span id="speedText" class="stat-val">5.0</span></div>
+        <div><strong>💰 골드:</strong> <span id="goldText" class="stat-val" style="color:#ffeb3b;">0</span> | <strong>🌟 SP:</strong> <span id="spText" class="stat-val" style="color:#ffeb3b;">0</span></div>
+        <div><strong>✨ 속성:</strong> <span id="elemText" class="stat-val">-</span></div>
     </div>
 
+    <button id="statBtn" onclick="openStatModal()">📊 스탯 창 [U]</button>
     <div id="questBox">📜 퀘스트: <span id="questText">주점에 가서 퀘스트를 수락하세요!</span></div>
     <div id="notifyBox">알림</div>
 </div>
@@ -141,28 +176,33 @@ const ELEMENTS = {
     air: { name: "💨 공기", color: "#e0ffff", glow: "#ffffff", dmgBonus: 1.1 }
 };
 
+// 스탯 보성치 포함 캐릭터 객체
 const player = {
     x: 120, y: 350, width: 24, height: 48, vx: 0, vy: 0,
-    isGrounded: false, facing: 'right', rank: 1,
-    baseHp: 100, baseAtk: 15, gold: 0, sp: 0,
+    isGrounded: false, facing: 'right',
+    
+    // 5대 스탯 레벨
+    stats: { speed: 1, power: 1, heal: 1, def: 1, hp: 1 },
+
+    // 실체 능력치 계산 변수
+    hp: 100, maxHp: 100,
+    shield: 50, maxShield: 50,
+    atk: 15, speedVal: 5.0, dodgeRate: 0.05,
+    gold: 0, sp: 0,
+
+    lastHitTime: 0, // 피격 후 방어막 재생용 타이머
     elementKey: null, isAttacking: false, attackTimer: 0, isSkill: false, skillTimer: 0
 };
 
-// 맵 구조: 'town' (마을), 'dungeon' (슬라임 성지)
 let currentMap = 'town';
-let activeQuest = null; // { id, title, target: 5, current: 0, rewardGold: 500, rewardSp: 2 }
+let activeQuest = null;
 
-// 마을 지형물 (주점, 대장간, 상점, 던전 포탈)
 const townBuildings = [
     { name: "🍺 주점", x: 150, width: 100, color: "#8b5a2b", type: 'tavern' },
-    { name: "🔨 대장간", x: 350, width: 90, color: "#4a5568", type: 'forge' },
-    { name: "🛒 상점", x: 530, width: 90, color: "#2b6cb0", type: 'shop' },
     { name: "🌀 던전 포탈", x: 800, width: 70, color: "#805ad5", type: 'portal' }
 ];
 
-const platforms = [
-    { x: 0, y: 440, width: 960, height: 80 }
-];
+const platforms = [{ x: 0, y: 440, width: 960, height: 80 }];
 
 let monsters = [];
 let particles = [];
@@ -173,9 +213,22 @@ function triggerShake(duration, intensity) {
     shakeTime = duration; shakeIntensity = intensity;
 }
 
+function recalculateStats() {
+    player.maxHp = 100 + (player.stats.hp - 1) * 20;
+    player.maxShield = 50 + (player.stats.def - 1) * 15;
+    player.atk = 15 + (player.stats.power - 1) * 6;
+    player.speedVal = 5.0 + (player.stats.speed - 1) * 0.4;
+    player.dodgeRate = Math.min(0.50, 0.05 + (player.stats.speed - 1) * 0.03); // 최대 50% 회피율
+
+    if (player.hp > player.maxHp) player.hp = player.maxHp;
+    if (player.shield > player.maxShield) player.shield = player.maxShield;
+}
+
 function selectElement(elemKey) {
     player.elementKey = elemKey;
     document.getElementById('charSelectScreen').style.display = 'none';
+    recalculateStats();
+    player.hp = player.maxHp; player.shield = player.maxShield;
     showNotify(`🎉 ${ELEMENTS[elemKey].name} 속성을 선택했습니다! 주점으로 이동하세요.`);
 }
 
@@ -189,7 +242,34 @@ function closeModals() {
     document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
 }
 
-// 주점 퀘스트 열기
+function openStatModal() {
+    closeModals();
+    updateStatUI();
+    document.getElementById('statModal').style.display = 'block';
+}
+
+function updateStatUI() {
+    document.getElementById('modalSp').innerText = player.sp;
+    document.getElementById('statSpeedLv').innerText = player.stats.speed;
+    document.getElementById('statPowerLv').innerText = player.stats.power;
+    document.getElementById('statHealLv').innerText = player.stats.heal;
+    document.getElementById('statDefLv').innerText = player.stats.def;
+    document.getElementById('statHpLv').innerText = player.stats.hp;
+}
+
+function addStat(type) {
+    if (player.sp > 0) {
+        player.sp--;
+        player.stats[type]++;
+        recalculateStats();
+        updateStatUI();
+        showNotify(`✨ 스탯 강화 완료! (${type.toUpperCase()} Lv.${player.stats[type]})`);
+    } else {
+        showNotify("❌ 사용 가능한 SP가 부족합니다!");
+    }
+}
+
+// 주점 퀘스트
 function openTavern() {
     closeModals();
     const modal = document.getElementById('tavernModal');
@@ -200,8 +280,8 @@ function openTavern() {
         options.innerHTML = `
             <div style="background:#182234; padding:12px; border-radius:8px; margin-bottom:10px; border:1px solid #ffeb3b;">
                 <h4 style="margin:0 0 5px 0; color:#ffeb3b;">🟢 [초급] 슬라임 성지 소탕</h4>
-                <p style="margin:0; font-size:12px;">슬라임 성지에서 슬라임 5마리를 처치하세요.</p>
-                <p style="margin:5px 0 0 0; color:#00ffcc; font-size:12px;">💰 보상: 500 Gold | 🌟 SP +2</p>
+                <p style="margin:0; font-size:12px;">슬라임 성지에서 다양한 슬라임 5마리를 처치하세요.</p>
+                <p style="margin:5px 0 0 0; color:#00ffcc; font-size:12px;">💰 보상: 600 Gold | 🌟 SP +3</p>
                 <button class="modal-btn" onclick="acceptQuest(1)">퀘스트 수락</button>
             </div>
         `;
@@ -214,20 +294,13 @@ function openTavern() {
             </div>
         `;
     } else {
-        options.innerHTML = `<p>현재 진행 중인 퀘스트: <strong>${activeQuest.title} (${activeQuest.current}/${activeQuest.target})</strong></p>`;
+        options.innerHTML = `<p>진행 중인 퀘스트: <strong>${activeQuest.title} (${activeQuest.current}/${activeQuest.target})</strong></p>`;
     }
     modal.style.display = 'block';
 }
 
 function acceptQuest(questId) {
-    activeQuest = {
-        id: 1,
-        title: "슬라임 5마리 처치",
-        target: 5,
-        current: 0,
-        rewardGold: 500,
-        rewardSp: 2
-    };
+    activeQuest = { id: 1, title: "슬라임 5마리 처치", target: 5, current: 0, rewardGold: 600, rewardSp: 3 };
     closeModals();
     showNotify("📜 퀘스트 수락! 오른쪽 [던전 포탈]로 이동하세요.");
     updateQuestUI();
@@ -251,37 +324,19 @@ function updateQuestUI() {
     }
 }
 
-function openShop(type) {
-    closeModals();
-    const modal = document.getElementById('shopModal');
-    document.getElementById('shopTitle').innerText = type === 'forge' ? '🔨 대장간' : '🛒 잡화 상점';
-    modal.style.display = 'block';
-}
-
-function upgradeAtk() {
-    if (player.gold >= 200) {
-        player.gold -= 200;
-        player.baseAtk += 5;
-        showNotify("⚔️ 공격력이 +5 강화되었습니다!");
-    } else {
-        showNotify("❌ 골드가 부족합니다! (200 골드 필요)");
-    }
-}
-
-// 슬라임 성지 몬스터 스폰 (대형, 중형, 소형 슬라임)
 function spawnSlimes() {
     monsters = [];
     const types = [
-        { name: "대형 대왕 슬라임", radius: 30, hp: 180, speed: 0.8 },
-        { name: "중형 슬라임", radius: 20, hp: 90, speed: 1.4 },
-        { name: "소형 미니 슬라임", radius: 12, hp: 40, speed: 2.2 }
+        { name: "대형 대왕 슬라임", radius: 30, hp: 180, atk: 12, speed: 0.8 },
+        { name: "중형 슬라임", radius: 20, hp: 90, atk: 7, speed: 1.4 },
+        { name: "소형 미니 슬라임", radius: 12, hp: 40, atk: 4, speed: 2.2 }
     ];
 
     for (let i = 0; i < 5; i++) {
         const t = types[i % 3];
         monsters.push({
             x: 300 + i * 130, y: 380,
-            radius: t.radius, hp: t.hp, maxHp: t.hp,
+            radius: t.radius, hp: t.hp, maxHp: t.hp, atk: t.atk,
             vx: (i % 2 === 0 ? 1 : -1) * t.speed,
             name: t.name, frozen: 0
         });
@@ -294,18 +349,17 @@ window.addEventListener('keydown', e => {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Space'].includes(e.key)) e.preventDefault();
     keys[e.key] = true;
 
-    // 상호작용 키
     if (e.key === 'q' || e.key === 'Q') {
         if (currentMap === 'town' && Math.abs(player.x - 180) < 60) openTavern();
     }
-    if (e.key === 'e' || e.key === 'E') {
-        if (currentMap === 'town' && Math.abs(player.x - 385) < 50) openShop('forge');
+    if (e.key === 'u' || e.key === 'U') {
+        openStatModal();
     }
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
 
-function addDamageText(x, y, damage, color = '#ffeb3b') {
-    damageTexts.push({ x, y, text: Math.floor(damage), opacity: 1, vy: -2, color });
+function addDamageText(x, y, text, color = '#ffeb3b') {
+    damageTexts.push({ x, y, text, opacity: 1, vy: -2, color });
 }
 
 function createImpactParticles(x, y, elemData, count = 12) {
@@ -318,10 +372,48 @@ function createImpactParticles(x, y, elemData, count = 12) {
     }
 }
 
+// 캐릭터가 공격받을 때 (방어막 우선 감소 + 회피 로직)
+function playerTakeDamage(damage) {
+    // 스피드 스탯 기반 회피 판정
+    if (Math.random() < player.dodgeRate) {
+        addDamageText(player.x + 10, player.y - 15, "DODGE!", "#00e5ff");
+        return;
+    }
+
+    player.lastHitTime = Date.now();
+    triggerShake(8, 5);
+
+    // 방어막 먼저 차감
+    if (player.shield > 0) {
+        if (player.shield >= damage) {
+            player.shield -= damage;
+            addDamageText(player.x + 10, player.y - 10, damage, "#00e5ff");
+        } else {
+            let remain = damage - player.shield;
+            player.shield = 0;
+            player.hp -= remain;
+            addDamageText(player.x + 10, player.y - 10, damage, "#ff0055");
+        }
+    } else {
+        // 방어막이 0이면 HP 감쇄
+        player.hp -= damage;
+        addDamageText(player.x + 10, player.y - 10, damage, "#ff0055");
+    }
+
+    if (player.hp <= 0) {
+        player.hp = player.maxHp;
+        player.shield = player.maxShield;
+        currentMap = 'town';
+        player.x = 120;
+        monsters = [];
+        showNotify("☠️ 사망했습니다! 마을로 부활 복귀합니다.");
+    }
+}
+
 function attackHit(range, isSkill = false) {
     if (!player.elementKey) return;
     const elem = ELEMENTS[player.elementKey];
-    let dmg = (isSkill ? player.baseAtk * 3.2 : player.baseAtk) * elem.dmgBonus;
+    let dmg = (isSkill ? player.atk * 3.2 : player.atk) * elem.dmgBonus;
 
     triggerShake(isSkill ? 10 : 5, isSkill ? 7 : 3);
 
@@ -335,14 +427,14 @@ function attackHit(range, isSkill = false) {
             hitBox.y < m.y + m.radius && hitBox.y + hitBox.height > m.y - m.radius) {
             
             m.hp -= dmg;
-            addDamageText(m.x, m.y - m.radius, dmg, isSkill ? elem.glow : '#ffffff');
+            addDamageText(m.x, m.y - m.radius, Math.floor(dmg), isSkill ? elem.glow : '#ffffff');
             createImpactParticles(m.x, m.y, elem, isSkill ? 20 : 10);
 
             if (player.elementKey === 'water' && isSkill) m.frozen = 60;
 
             if (m.hp <= 0) {
                 monsters.splice(idx, 1);
-                player.gold += 30;
+                player.gold += 35;
 
                 if (activeQuest && activeQuest.current < activeQuest.target) {
                     activeQuest.current++;
@@ -358,22 +450,21 @@ function attackHit(range, isSkill = false) {
 
 function update() {
     if (!player.elementKey) return;
-    const speed = 5.0;
 
-    if (keys['ArrowLeft']) { player.vx = -speed; player.facing = 'left'; }
-    else if (keys['ArrowRight']) { player.vx = speed; player.facing = 'right'; }
+    if (keys['ArrowLeft']) { player.vx = -player.speedVal; player.facing = 'left'; }
+    else if (keys['ArrowRight']) { player.vx = player.speedVal; player.facing = 'right'; }
     else { player.vx = 0; }
 
     if ((keys['Space'] || keys[' ']) && player.isGrounded) {
         player.vy = -11; player.isGrounded = false;
     }
 
-    // 포탈 상호작용 [↑] (이동 후 바깥쪽 안전 좌표 배치로 무한 왕복 해결)
+    // 포탈 상호작용
     if (keys['ArrowUp']) {
         if (currentMap === 'town' && player.x > 770 && player.x < 860) {
             if (activeQuest) {
                 currentMap = 'dungeon';
-                player.x = 120; // 던전 안쪽으로 배치
+                player.x = 120;
                 spawnSlimes();
                 showNotify("⚔️ [슬라임 성지] 입장!");
                 keys['ArrowUp'] = false;
@@ -382,7 +473,7 @@ function update() {
             }
         } else if (currentMap === 'dungeon' && player.x < 90) {
             currentMap = 'town';
-            player.x = 720; // 마을 포탈 앞쪽 안전지대로 배치
+            player.x = 720;
             monsters = [];
             showNotify("🏡 [마을] 복귀!");
             keys['ArrowUp'] = false;
@@ -400,6 +491,22 @@ function update() {
         attackHit(110, true);
     }
     if (player.skillTimer > 0) player.skillTimer--; else player.isSkill = false;
+
+    // 자동 치유 및 방어막 회복 (치유 스탯 반영)
+    const now = Date.now();
+    const healRate = 0.03 * player.stats.heal;
+
+    // 1) 치유: 정지 중이거나 평소에 HP 천천히 회복
+    if (player.vx === 0 && player.hp < player.maxHp) {
+        player.hp = Math.min(player.maxHp, player.hp + healRate * 1.5);
+    } else if (player.hp < player.maxHp) {
+        player.hp = Math.min(player.maxHp, player.hp + healRate * 0.3);
+    }
+
+    // 2) 방어막: 안 맞은 지 2.5초 지나면 회복 차오름
+    if (now - player.lastHitTime > 2500 && player.shield < player.maxShield) {
+        player.shield = Math.min(player.maxShield, player.shield + healRate * 2.0);
+    }
 
     player.vy += 0.6;
     player.x += player.vx;
@@ -419,12 +526,20 @@ function update() {
     if (player.x < 0) player.x = 0;
     if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
 
-    // 슬라임 이동 AI
+    // 슬라임 피격 충돌 및 AI
     monsters.forEach(m => {
         if (m.frozen > 0) m.frozen--;
         else {
             m.x += m.vx;
             if (m.x < 150 || m.x > 880) m.vx *= -1;
+        }
+
+        // 플레이어 몸통 충돌 피격 처리
+        if (Math.abs(player.x + player.width / 2 - m.x) < m.radius + 10 &&
+            Math.abs(player.y + player.height / 2 - m.y) < m.radius + 20) {
+            if (now - player.lastHitTime > 1000) { // 1초 무적 쿨다운
+                playerTakeDamage(m.atk);
+            }
         }
     });
 
@@ -438,11 +553,14 @@ function update() {
         if (d.opacity <= 0) damageTexts.splice(i, 1);
     });
 
-    document.getElementById('hpText').innerText = `${player.baseHp}/${player.baseHp}`;
-    document.getElementById('atkText').innerText = `${player.baseAtk}`;
+    // UI 오버레이 정보 반영
+    document.getElementById('hpText').innerText = `${Math.floor(player.hp)}/${player.maxHp}`;
+    document.getElementById('defText').innerText = `${Math.floor(player.shield)}/${player.maxShield}`;
+    document.getElementById('atkText').innerText = `${Math.floor(player.atk)}`;
+    document.getElementById('speedText').innerText = `${player.speedVal.toFixed(1)}`;
     document.getElementById('goldText').innerText = `${player.gold}`;
-    document.getElementById('elemText').innerText = player.elementKey ? ELEMENTS[player.elementKey].name : '-';
     document.getElementById('spText').innerText = `${player.sp}`;
+    document.getElementById('elemText').innerText = player.elementKey ? ELEMENTS[player.elementKey].name : '-';
 }
 
 function draw() {
@@ -452,69 +570,67 @@ function draw() {
         shakeTime--;
     }
 
-    // 맵 배경
     if (currentMap === 'town') {
         const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
         grad.addColorStop(0, '#0f172a'); grad.addColorStop(1, '#1e293b');
         ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 건물들
         townBuildings.forEach(b => {
             ctx.fillStyle = b.color;
             ctx.fillRect(b.x, 280, b.width, 160);
             ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif';
             ctx.fillText(b.name, b.x + 10, 265);
 
-            // 주점 상호작용 텍스트
             if (b.type === 'tavern' && Math.abs(player.x - (b.x + 30)) < 50) {
                 ctx.fillStyle = '#ffeb3b';
                 ctx.fillText("[Q] 키를 눌러 주점 진입", b.x - 10, 240);
             }
         });
     } else {
-        // 던전 배경 (슬라임 성지)
         const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
         grad.addColorStop(0, '#052014'); grad.addColorStop(1, '#02120b');
         ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 귀환 포탈
         ctx.fillStyle = '#00ffcc'; ctx.font = '12px sans-serif';
         ctx.fillText("🌀 마을 귀환 [↑]", 20, 320);
         ctx.strokeStyle = '#00ffcc'; ctx.strokeRect(20, 330, 50, 110);
     }
 
-    // 바닥
     platforms.forEach(plat => {
         ctx.fillStyle = '#111827'; ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
         ctx.fillStyle = '#00e5ff'; ctx.fillRect(plat.x, plat.y, plat.width, 3);
     });
 
-    // 슬라임 몬스터들
     monsters.forEach(m => {
         ctx.fillStyle = m.frozen > 0 ? '#00ffff' : '#00ff88';
         ctx.shadowBlur = 12; ctx.shadowColor = '#00ff88';
         ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
 
-        // 체력바
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, m.radius * 2, 4);
         ctx.fillStyle = '#ff0055';
         ctx.fillRect(m.x - m.radius, m.y - m.radius - 12, (m.hp / m.maxHp) * (m.radius * 2), 4);
     });
 
-    // 파티클
     particles.forEach(p => {
         ctx.shadowBlur = 8; ctx.shadowColor = p.glow || p.color;
         ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
         ctx.shadowBlur = 0;
     });
 
-    // 졸라맨 캐릭터
     if (player.elementKey) {
         const elem = ELEMENTS[player.elementKey];
         const px = player.x + player.width / 2;
         const py = player.y;
+
+        // 방어막 글로우 이펙트
+        if (player.shield > 0) {
+            ctx.shadowBlur = 12; ctx.shadowColor = '#00e5ff';
+            ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(px, py + 20, 26, 0, Math.PI * 2); ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
 
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(px, py + 10, 8, 0, Math.PI * 2); ctx.stroke();
@@ -541,7 +657,6 @@ function draw() {
         }
     }
 
-    // 데미지 텍스트
     damageTexts.forEach(d => {
         ctx.shadowBlur = 6; ctx.shadowColor = d.color; ctx.fillStyle = d.color;
         ctx.font = 'bold 16px sans-serif'; ctx.globalAlpha = d.opacity;
